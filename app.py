@@ -50,12 +50,14 @@ class LeosacWebSocketClient:
         self.callbacks = {}
         self.auth_token = None
         self.user_info = None
+        self.loop = None
         
     async def connect(self):
         """Connect to Leosac WebSocket server"""
         try:
             self.websocket = await websockets.connect(WEBSOCKET_URL)
             self.connected = True
+            self.loop = asyncio.get_event_loop()
             print(f"Connected to Leosac server at {WEBSOCKET_URL}")
             
             # Start listening for messages
@@ -195,6 +197,88 @@ class LeosacWebSocketClient:
         except Exception as e:
             print(f"Logout error: {e}")
             return False
+    
+    async def get_users(self):
+        """Get all users"""
+        try:
+            result = await self.send_json('user.read', {'user_id': 0})
+            if result.get('status_code') == 0:
+                content = result.get('content', {})
+                # Parse JSON:API format
+                if 'data' in content and isinstance(content['data'], list):
+                    users = []
+                    for user_data in content['data']:
+                        user = {
+                            'id': user_data.get('id'),
+                            **user_data.get('attributes', {})
+                        }
+                        users.append(user)
+                    return users
+                return []
+            else:
+                return []
+        except Exception as e:
+            print(f"Error getting users: {e}")
+            return []
+    
+    async def get_user(self, user_id):
+        """Get a specific user by ID"""
+        try:
+            result = await self.send_json('user.read', {'user_id': int(user_id)})
+            if result.get('status_code') == 0:
+                content = result.get('content', {})
+                # Parse JSON:API format - single user returns object, not array
+                if 'data' in content:
+                    user_data = content['data']
+                    # Handle both single user (object) and multiple users (array) responses
+                    if isinstance(user_data, list):
+                        if len(user_data) > 0:
+                            user_data = user_data[0]
+                        else:
+                            return None
+                    
+                    user = {
+                        'id': user_data.get('id'),
+                        **user_data.get('attributes', {})
+                    }
+                    return user
+                return None
+            else:
+                return None
+        except Exception as e:
+            print(f"Error getting user {user_id}: {e}")
+            return None
+    
+    async def create_user(self, user_data):
+        """Create a new user"""
+        try:
+            result = await self.send_json('user.create', {
+                'attributes': user_data
+            })
+            return result.get('status_code') == 0, result
+        except Exception as e:
+            return False, {'error': str(e)}
+    
+    async def update_user(self, user_id, user_data):
+        """Update an existing user"""
+        try:
+            result = await self.send_json('user.update', {
+                'user_id': int(user_id),
+                'attributes': user_data
+            })
+            return result.get('status_code') == 0, result
+        except Exception as e:
+            return False, {'error': str(e)}
+    
+    async def delete_user(self, user_id):
+        """Delete a user"""
+        try:
+            result = await self.send_json('user.delete', {
+                'user_id': int(user_id)
+            })
+            return result.get('status_code') == 0, result
+        except Exception as e:
+            return False, {'error': str(e)}
 
 # Global WebSocket client
 leosac_client = LeosacWebSocketClient()
@@ -395,12 +479,98 @@ def zone_overview():
 @app.route('/users')
 @login_required
 def users_list():
-    return render_template('users/list.html')
+    """List all users"""
+    try:
+        # Check if WebSocket client is connected
+        if not leosac_client.connected or not leosac_client.loop:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return render_template('users/list.html', users=[])
+        
+        # Get users from WebSocket using the client's event loop
+        future = asyncio.run_coroutine_threadsafe(leosac_client.get_users(), leosac_client.loop)
+        users = future.result(timeout=10)
+        
+        return render_template('users/list.html', users=users)
+    except Exception as e:
+        flash(f'Error loading users: {str(e)}', 'error')
+        return render_template('users/list.html', users=[])
 
-@app.route('/users/create')
+@app.route('/users/create', methods=['GET', 'POST'])
 @login_required
 def users_create():
-    return render_template('users/create.html')
+    """Create a new user"""
+    if request.method == 'POST':
+        try:
+            # Check if WebSocket client is connected
+            if not leosac_client.connected or not leosac_client.loop:
+                flash('WebSocket connection not available. Please try again.', 'error')
+                return render_template('users/create.html', user_data=request.form, ranks=['admin', 'user'])
+            
+            # Get form data
+            user_data = {
+                'username': request.form.get('username'),
+                'firstname': request.form.get('firstname'),
+                'lastname': request.form.get('lastname'),
+                'email': request.form.get('email'),
+                'password': request.form.get('password'),
+                'rank': request.form.get('rank', 'user')
+            }
+            
+            # Validate required fields
+            if not all([user_data['username'], user_data['firstname'], 
+                       user_data['lastname'], user_data['email'], user_data['password']]):
+                flash('All fields are required', 'error')
+                return render_template('users/create.html', user_data=user_data, ranks=['admin', 'user'])
+            
+            # Create user via WebSocket
+            future = asyncio.run_coroutine_threadsafe(leosac_client.create_user(user_data), leosac_client.loop)
+            success, result = future.result(timeout=10)
+            
+            if success:
+                flash('User created successfully!', 'success')
+                return redirect(url_for('users_list'))
+            else:
+                error_msg = result.get('status_string', 'Unknown error')
+                flash(f'Failed to create user: {error_msg}', 'error')
+                return render_template('users/create.html', user_data=user_data)
+                
+        except Exception as e:
+            flash(f'Error creating user: {str(e)}', 'error')
+            return render_template('users/create.html', user_data=request.form, ranks=['admin', 'user'])
+    
+    # Available user ranks
+    ranks = ['admin', 'user']
+    return render_template('users/create.html', ranks=ranks)
+
+@app.route('/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+def users_delete(user_id):
+    """Delete a user"""
+    try:
+        # Check if WebSocket client is connected
+        if not leosac_client.connected or not leosac_client.loop:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('users_list'))
+        
+        # Don't allow deleting the current user
+        if user_id == current_user.id:
+            flash('You cannot delete your own account', 'error')
+            return redirect(url_for('users_list'))
+        
+        # Delete user via WebSocket
+        future = asyncio.run_coroutine_threadsafe(leosac_client.delete_user(user_id), leosac_client.loop)
+        success, result = future.result(timeout=10)
+        
+        if success:
+            flash('User deleted successfully!', 'success')
+        else:
+            error_msg = result.get('status_string', 'Unknown error')
+            flash(f'Failed to delete user: {error_msg}', 'error')
+            
+    except Exception as e:
+        flash(f'Error deleting user: {str(e)}', 'error')
+    
+    return redirect(url_for('users_list'))
 
 @app.route('/groups')
 @login_required
@@ -482,7 +652,26 @@ def auditlog():
 @app.route('/profile/<int:user_id>')
 @login_required
 def profile(user_id):
-    return render_template('profile.html', user_id=user_id)
+    """View user profile"""
+    try:
+        # Check if WebSocket client is connected
+        if not leosac_client.connected or not leosac_client.loop:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('users_list'))
+        
+        # Get user details from WebSocket
+        future = asyncio.run_coroutine_threadsafe(leosac_client.get_user(user_id), leosac_client.loop)
+        user = future.result(timeout=10)
+        
+        if user:
+            return render_template('profile.html', user=user)
+        else:
+            flash('User not found', 'error')
+            return redirect(url_for('users_list'))
+            
+    except Exception as e:
+        flash(f'Error loading user profile: {str(e)}', 'error')
+        return redirect(url_for('users_list'))
 
 @app.route('/settings')
 @login_required
