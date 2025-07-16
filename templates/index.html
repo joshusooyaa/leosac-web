@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Leosac Web GUI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>Welcome to Leosac Web GUI</h1>
+        <p class="lead">You are successfully logged in as <strong>{{ user.username }}</strong></p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Connection Status</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Leosac Server:</strong> {{ config.LEOSAC_ADDR }}</p>
+                <p><strong>User ID:</strong> {{ user.id }}</p>
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                {% if user.rank %}
+                <p><strong>Rank:</strong> {{ user.rank }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <p>This is a basic Flask implementation of the Leosac Web GUI.</p>
+                <p>Future features will include:</p>
+                <ul>
+                    <li>Access point management</li>
+                    <li>User management</li>
+                    <li>Audit logs</li>
+                    <li>System configuration</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
