@@ -263,7 +263,12 @@ class LeosacWebSocketService:
             result_queue.put(data.get('content', {}))
           else:
             logger.debug(f"Error for {message_uuid}: {data.get('status_string')}")
-            result_queue.put(None)  # Signal error
+            # Put the error details instead of None
+            error_response = {
+              'status_code': data.get('status_code'),
+              'status_string': data.get('status_string', 'Unknown error')
+            }
+            result_queue.put(error_response)
         del self.callbacks[message_uuid]
       else:
         if data.get('type') == 'session_closed':
@@ -685,6 +690,204 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error updating user profile {user_id}: {e}")
       return False, {'error': str(e)}
 
+  def get_credentials(self):
+    """Get all credentials (thread-safe)"""
+    logger.info("=== GETTING CREDENTIALS ===")
+    try:
+      result = self._run_in_websocket_thread('credential.read', {})
+      
+      if result and 'data' in result:
+        credentials = []
+        for cred_data in result['data']:
+          credential = {
+            'id': cred_data.get('id'),
+            'type': cred_data.get('type'),
+            'alias': cred_data.get('attributes', {}).get('alias'),
+            'description': cred_data.get('attributes', {}).get('description'),
+            'owner_id': cred_data.get('attributes', {}).get('owner'),
+            'owner_name': cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('attributes', {}).get('username', 'Unknown'),
+            'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),  # Handle snake_case from server
+            'validity_start': cred_data.get('attributes', {}).get('validity_start'),  # Handle snake_case from server
+            'validity_end': cred_data.get('attributes', {}).get('validity_end'),  # Handle snake_case from server
+            'version': cred_data.get('attributes', {}).get('version', 0)
+          }
+          
+          # Add RFID-specific fields
+          if cred_data.get('type') == 'RFIDCard':
+            credential.update({
+              'card_id': cred_data.get('attributes', {}).get('card-id'),  # Handle hyphens from server
+              'nb_bits': cred_data.get('attributes', {}).get('nb-bits'),  # Handle hyphens from server
+              'display_identifier': cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+            })
+          elif cred_data.get('type') == 'PinCode':
+            credential.update({
+              'code': cred_data.get('attributes', {}).get('code'),
+              'display_identifier': '***' + cred_data.get('attributes', {}).get('code', '')[-4:] if cred_data.get('attributes', {}).get('code') else 'N/A'
+            })
+          
+          credentials.append(credential)
+        logger.info(f"✓ Retrieved {len(credentials)} credentials")
+        return credentials
+      logger.warning("✗ No credentials data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting credentials: {e}")
+      return []
+
+  def get_credential(self, credential_id):
+    """Get a specific credential by ID (thread-safe)"""
+    logger.info(f"=== GETTING CREDENTIAL: {credential_id} ===")
+    try:
+      result = self._run_in_websocket_thread('credential.read', {'credential_id': int(credential_id)})
+      
+      if result and 'data' in result:
+        cred_data = result['data']
+        if isinstance(cred_data, list):
+          if len(cred_data) > 0:
+            cred_data = cred_data[0]
+          else:
+            logger.warning(f"✗ Credential {credential_id} not found (empty list)")
+            return None
+        
+        credential = {
+          'id': cred_data.get('id'),
+          'type': cred_data.get('type'),
+          'alias': cred_data.get('attributes', {}).get('alias'),
+          'description': cred_data.get('attributes', {}).get('description'),
+          'owner_id': cred_data.get('attributes', {}).get('owner'),
+          'owner_name': cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('attributes', {}).get('username', 'Unknown'),
+          'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),  # Handle snake_case from server
+          'validity_start': cred_data.get('attributes', {}).get('validity_start'),  # Handle snake_case from server
+          'validity_end': cred_data.get('attributes', {}).get('validity_end'),  # Handle snake_case from server
+          'version': cred_data.get('attributes', {}).get('version', 0)
+        }
+        
+        # Add RFID-specific fields
+        if cred_data.get('type') == 'RFIDCard':
+          credential.update({
+            'card_id': cred_data.get('attributes', {}).get('card-id'),  # Handle hyphens from server
+            'nb_bits': cred_data.get('attributes', {}).get('nb-bits'),  # Handle hyphens from server
+            'display_identifier': cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+          })
+        elif cred_data.get('type') == 'PinCode':
+          credential.update({
+            'code': cred_data.get('attributes', {}).get('code'),
+            'display_identifier': '***' + cred_data.get('attributes', {}).get('code', '')[-4:] if cred_data.get('attributes', {}).get('code') else 'N/A'
+          })
+        
+        logger.info(f"✓ Retrieved credential {credential_id}")
+        return credential
+      logger.warning(f"✗ Credential {credential_id} not found")
+      return None
+    except Exception as e:
+      logger.error(f"✗ Error getting credential {credential_id}: {e}")
+      return None
+
+  def create_rfid_credential(self, credential_data):
+    """Create a new RFID credential (thread-safe)"""
+    logger.info(f"=== CREATING RFID CREDENTIAL: {credential_data.get('alias')} ===")
+    try:
+      # Prepare the credential data structure matching server expectations
+      rfid_data = {
+        'credential-type': 'rfid-card',  # Use the model name format
+        'attributes': {
+          'alias': credential_data.get('alias'),
+          'description': credential_data.get('description', ''),
+          'card-id': credential_data.get('card_id'),  # Use hyphens like server expects
+          'nb-bits': int(credential_data.get('nb_bits', 32)),  # Use hyphens like server expects
+          'validity-enabled': credential_data.get('validity_enabled', False),  # Use hyphens like server expects
+          'validity-start': credential_data.get('validity_start'),  # Use hyphens like server expects
+          'validity-end': credential_data.get('validity_end')  # Use hyphens like server expects
+        }
+      }
+      
+      # Add owner if specified (use owner_id format like Ember)
+      if credential_data.get('owner'):
+        rfid_data['attributes']['owner_id'] = int(credential_data['owner'])
+      else:
+        rfid_data['attributes']['owner_id'] = 0
+      
+      logger.debug(f"Sending RFID credential data: {rfid_data}")
+      logger.debug(f"Card ID being sent: '{credential_data.get('card_id')}'")
+      logger.debug(f"Number of bits being sent: {credential_data.get('nb_bits')}")
+      result = self._run_in_websocket_thread('credential.create', rfid_data)
+      
+      logger.debug(f"Raw result from credential.create: {result}")
+      
+      if result is None:
+        logger.error("✗ RFID credential creation failed: result is None")
+        return False, {'error': 'Server returned no response'}
+      
+      # Check if result has status information (error response)
+      if isinstance(result, dict) and 'status_code' in result:
+        status_code = result.get('status_code')
+        status_string = result.get('status_string', 'Unknown error')
+        
+        if status_code == 0:
+          logger.info("✓ RFID credential creation successful")
+          return True, result
+        else:
+          logger.error(f"✗ RFID credential creation failed: {status_string}")
+          return False, {'error': status_string}
+      elif isinstance(result, dict):
+        # Success response (content data)
+        logger.info("✓ RFID credential creation successful")
+        return True, result
+      else:
+        logger.error(f"✗ RFID credential creation failed: unexpected result type {type(result)}")
+        return False, {'error': 'Unexpected response format'}
+        
+    except Exception as e:
+      logger.error(f"✗ Error creating RFID credential: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_rfid_credential(self, credential_id, credential_data):
+    """Update an existing RFID credential (thread-safe)"""
+    logger.info(f"=== UPDATING RFID CREDENTIAL: {credential_id} ===")
+    try:
+      # Prepare the credential data structure
+      rfid_data = {
+        'credential_id': int(credential_id),
+        'attributes': {
+          'alias': credential_data.get('alias'),
+          'description': credential_data.get('description', ''),
+          'card-id': credential_data.get('card_id'),  # Use hyphens like server expects
+          'nb-bits': int(credential_data.get('nb_bits', 32)),  # Use hyphens like server expects
+          'validity-enabled': credential_data.get('validity_enabled', False),  # Use hyphens like server expects
+          'validity-start': credential_data.get('validity_start'),  # Use hyphens like server expects
+          'validity-end': credential_data.get('validity_end')  # Use hyphens like server expects
+        }
+      }
+      
+      # Add owner if specified
+      if credential_data.get('owner'):
+        rfid_data['attributes']['owner'] = int(credential_data['owner'])
+      
+      result = self._run_in_websocket_thread('credential.update', rfid_data)
+      
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} RFID credential update {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error updating RFID credential {credential_id}: {e}")
+      return False, {'error': str(e)}
+
+  def delete_credential(self, credential_id):
+    """Delete a credential (thread-safe)"""
+    logger.info(f"=== DELETING CREDENTIAL: {credential_id} ===")
+    try:
+      result = self._run_in_websocket_thread('credential.delete', {
+        'credential_id': int(credential_id)
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Credential deletion {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error deleting credential {credential_id}: {e}")
+      return False, {'error': str(e)}
+
 # Global WebSocket client
 leosac_client = LeosacWebSocketService()
 
@@ -985,17 +1188,224 @@ def groups_create():
 @app.route('/credentials')
 @login_required
 def credentials_list():
-    return render_template('credentials/list.html')
+    """List all credentials"""
+    try:
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            logger.warning('WebSocket connection not available in credentials_list route.')
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return render_template('credentials/list.html', credentials=[])
+        credentials = leosac_client.get_credentials()
+        return render_template('credentials/list.html', credentials=credentials)
+    except Exception as e:
+        logger.error(f'Error loading credentials: {str(e)}')
+        flash(f'Error loading credentials: {str(e)}', 'error')
+        return render_template('credentials/list.html', credentials=[])
 
-@app.route('/credentials/rfid/create')
+@app.route('/credentials/rfid/create', methods=['GET', 'POST'])
 @login_required
 def credentials_rfid_create():
-    return render_template('credentials/rfid_create.html')
+    """Create a new RFID credential"""
+    if request.method == 'POST':
+        try:
+            # Check if WebSocket client is connected
+            auth_state = leosac_client.get_auth_state()
+            if not auth_state['connected']:
+                flash('WebSocket connection not available. Please try again.', 'error')
+                return render_template('credentials/rfid_create.html', credential_data=request.form, users=[])
+
+            # Get form data
+            credential_data = {
+                'alias': request.form.get('alias'),
+                'card_id': request.form.get('card_id'),
+                'nb_bits': request.form.get('nb_bits', 32),
+                'description': request.form.get('description', ''),
+                'owner': request.form.get('owner'),
+                'validity_enabled': request.form.get('validity_enabled') == 'on',
+                'validity_start': request.form.get('validity_start'),
+                'validity_end': request.form.get('validity_end')
+            }
+
+            # Validate required fields
+            if not all([credential_data['alias'], credential_data['card_id'], credential_data['nb_bits']]):
+                flash('Alias, Card ID, and Number of Bits are required', 'error')
+                return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
+
+            # Validate card ID format - use the same regex as Ember (allows variable length)
+            import re
+            hex_regex = re.compile(r'^[0-9A-F]{2}(?::[0-9A-F]{2})*$', re.IGNORECASE)
+            if not hex_regex.match(credential_data['card_id']):
+                flash('Invalid card ID format. Use hex format like 00:22:28:c8 (hex pairs separated by colons)', 'error')
+                return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
+
+            # Validate number of bits
+            try:
+                nb_bits = int(credential_data['nb_bits'])
+                if nb_bits <= 0 or nb_bits % 8 != 0:
+                    flash('Number of bits must be positive and divisible by 8', 'error')
+                    return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
+            except ValueError:
+                flash('Number of bits must be a valid integer', 'error')
+                return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
+
+            # Create credential via WebSocket
+            success, result = leosac_client.create_rfid_credential(credential_data)
+
+            if success:
+                flash('RFID credential created successfully!', 'success')
+                return redirect(url_for('credentials_list'))
+            else:
+                # Handle different error response formats
+                if isinstance(result, dict):
+                    error_msg = result.get('error', result.get('status_string', 'Unknown error'))
+                else:
+                    error_msg = str(result) if result else 'Unknown error'
+                flash(f'Failed to create RFID credential: {error_msg}', 'error')
+                return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
+
+        except Exception as e:
+            flash(f'Error creating RFID credential: {str(e)}', 'error')
+            return render_template('credentials/rfid_create.html', credential_data=request.form, users=[])
+
+    # Get users for the dropdown
+    try:
+        users = leosac_client.get_users()
+    except Exception as e:
+        logger.error(f'Error loading users for RFID create: {str(e)}')
+        users = []
+
+    return render_template('credentials/rfid_create.html', users=users)
 
 @app.route('/credentials/pin/create')
 @login_required
 def credentials_pin_create():
     return render_template('credentials/pin_create.html')
+
+@app.route('/credentials/<int:credential_id>')
+@login_required
+def credential_view(credential_id):
+    """View a specific credential"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('credentials_list'))
+
+        # Get credential details from WebSocket
+        credential = leosac_client.get_credential(credential_id)
+
+        if credential:
+            return render_template('credentials/view.html', credential=credential)
+        else:
+            flash('Credential not found', 'error')
+            return redirect(url_for('credentials_list'))
+
+    except Exception as e:
+        flash(f'Error loading credential: {str(e)}', 'error')
+        return redirect(url_for('credentials_list'))
+
+@app.route('/credentials/<int:credential_id>/edit', methods=['GET', 'POST'])
+@login_required
+def credential_edit(credential_id):
+    """Edit a specific credential"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('credential_view', credential_id=credential_id))
+
+        # Get credential details
+        credential = leosac_client.get_credential(credential_id)
+        if not credential:
+            flash('Credential not found', 'error')
+            return redirect(url_for('credentials_list'))
+
+        if request.method == 'POST':
+            # Get form data
+            credential_data = {
+                'alias': request.form.get('alias'),
+                'description': request.form.get('description', ''),
+                'owner': request.form.get('owner'),
+                'validity_enabled': request.form.get('validity_enabled') == 'on',
+                'validity_start': request.form.get('validity_start'),
+                'validity_end': request.form.get('validity_end')
+            }
+
+            # Add RFID-specific fields
+            if credential['type'] == 'RFIDCard':
+                credential_data.update({
+                    'card_id': request.form.get('card_id'),
+                    'nb_bits': request.form.get('nb_bits', 32)
+                })
+
+            # Validate required fields
+            if not credential_data['alias']:
+                flash('Alias is required', 'error')
+                return render_template('credentials/edit.html', credential=credential, users=[])
+
+            # Validate card ID format for RFID cards - server expects aa:bb:cc:11 format
+            if credential['type'] == 'RFIDCard':
+                import re
+                hex_regex = re.compile(r'^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$', re.IGNORECASE)
+                if not hex_regex.match(credential_data['card_id']):
+                    flash('Invalid card ID format. Use hex format like aa:bb:cc:11 (exactly 4 hex pairs separated by colons)', 'error')
+                    return render_template('credentials/edit.html', credential=credential, users=[])
+
+            # Update credential via WebSocket
+            if credential['type'] == 'RFIDCard':
+                success, result = leosac_client.update_rfid_credential(credential_id, credential_data)
+            else:
+                # TODO: Add PIN code update method
+                flash('PIN code editing not yet implemented', 'error')
+                return render_template('credentials/edit.html', credential=credential, users=[])
+
+            if success:
+                flash('Credential updated successfully!', 'success')
+                return redirect(url_for('credential_view', credential_id=credential_id))
+            else:
+                error_msg = result.get('status_string', 'Unknown error')
+                flash(f'Failed to update credential: {error_msg}', 'error')
+                return render_template('credentials/edit.html', credential=credential, users=[])
+
+        # Get users for the dropdown
+        try:
+            users = leosac_client.get_users()
+        except Exception as e:
+            logger.error(f'Error loading users for credential edit: {str(e)}')
+            users = []
+
+        return render_template('credentials/edit.html', credential=credential, users=users)
+
+    except Exception as e:
+        flash(f'Error editing credential: {str(e)}', 'error')
+        return redirect(url_for('credential_view', credential_id=credential_id))
+
+@app.route('/credentials/<int:credential_id>/delete', methods=['POST'])
+@login_required
+def credential_delete(credential_id):
+    """Delete a credential"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('credentials_list'))
+
+        # Delete credential via WebSocket
+        success, result = leosac_client.delete_credential(credential_id)
+
+        if success:
+            flash('Credential deleted successfully!', 'success')
+        else:
+            error_msg = result.get('status_string', 'Unknown error')
+            flash(f'Failed to delete credential: {error_msg}', 'error')
+
+    except Exception as e:
+        flash(f'Error deleting credential: {str(e)}', 'error')
+
+    return redirect(url_for('credentials_list'))
 
 @app.route('/schedules')
 @login_required
