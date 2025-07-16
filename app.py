@@ -260,7 +260,13 @@ class LeosacWebSocketService:
         if result_queue:
           if data.get('status_code') == 0:
             logger.debug(f"Success for {message_uuid}")
-            result_queue.put(data.get('content', {}))
+            # For successful responses, return content if available, otherwise return a success indicator
+            content = data.get('content')
+            if content is not None:
+              result_queue.put(content)
+            else:
+              # For empty content (like updates), return a success indicator
+              result_queue.put({'success': True, 'status_code': 0})
           else:
             logger.debug(f"Error for {message_uuid}: {data.get('status_string')}")
             # Put the error details instead of None
@@ -730,13 +736,16 @@ class LeosacWebSocketService:
           }
           
           # Add RFID-specific fields
-          if cred_data.get('type') == 'RFIDCard':
+          if cred_data.get('type') == 'rfid-card':
+            card_id = cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+            nb_bits = cred_data.get('attributes', {}).get('nb-bits')  # Handle hyphens from server
+            logger.debug(f"RFID Card {cred_data.get('id')}: card_id='{card_id}', nb_bits={nb_bits}")
             credential.update({
-              'card_id': cred_data.get('attributes', {}).get('card-id'),  # Handle hyphens from server
-              'nb_bits': cred_data.get('attributes', {}).get('nb-bits'),  # Handle hyphens from server
-              'display_identifier': cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+              'card_id': card_id,  # Handle hyphens from server
+              'nb_bits': nb_bits,  # Handle hyphens from server
+              'display_identifier': card_id  # Handle hyphens from server
             })
-          elif cred_data.get('type') == 'PinCode':
+          elif cred_data.get('type') == 'pin-code':
             credential.update({
               'code': cred_data.get('attributes', {}).get('code'),
               'display_identifier': '***' + cred_data.get('attributes', {}).get('code', '')[-4:] if cred_data.get('attributes', {}).get('code') else 'N/A'
@@ -797,13 +806,16 @@ class LeosacWebSocketService:
         }
         
         # Add RFID-specific fields
-        if cred_data.get('type') == 'RFIDCard':
+        if cred_data.get('type') == 'rfid-card':
+          card_id = cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+          nb_bits = cred_data.get('attributes', {}).get('nb-bits')  # Handle hyphens from server
+          logger.debug(f"RFID Card {credential_id}: card_id='{card_id}', nb_bits={nb_bits}")
           credential.update({
-            'card_id': cred_data.get('attributes', {}).get('card-id'),  # Handle hyphens from server
-            'nb_bits': cred_data.get('attributes', {}).get('nb-bits'),  # Handle hyphens from server
-            'display_identifier': cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+            'card_id': card_id,  # Handle hyphens from server
+            'nb_bits': nb_bits,  # Handle hyphens from server
+            'display_identifier': card_id  # Handle hyphens from server
           })
-        elif cred_data.get('type') == 'PinCode':
+        elif cred_data.get('type') == 'pin-code':
           credential.update({
             'code': cred_data.get('attributes', {}).get('code'),
             'display_identifier': '***' + cred_data.get('attributes', {}).get('code', '')[-4:] if cred_data.get('attributes', {}).get('code') else 'N/A'
@@ -888,23 +900,57 @@ class LeosacWebSocketService:
           'description': credential_data.get('description', ''),
           'card-id': credential_data.get('card_id'),  # Use hyphens like server expects
           'nb-bits': int(credential_data.get('nb_bits', 32)),  # Use hyphens like server expects
-          'validity-enabled': credential_data.get('validity_enabled', False),  # Use hyphens like server expects
-          'validity-start': credential_data.get('validity_start'),  # Use hyphens like server expects
-          'validity-end': credential_data.get('validity_end')  # Use hyphens like server expects
+          'validity-enabled': credential_data.get('validity_enabled', False)  # Use hyphens like server expects
         }
       }
       
+      # Add validity dates only if they have values
+      if credential_data.get('validity_start'):
+        rfid_data['attributes']['validity-start'] = credential_data.get('validity_start')
+      if credential_data.get('validity_end'):
+        rfid_data['attributes']['validity-end'] = credential_data.get('validity_end')
+      
       # Add owner if specified
       if credential_data.get('owner'):
-        rfid_data['attributes']['owner'] = int(credential_data['owner'])
+        rfid_data['attributes']['owner_id'] = int(credential_data['owner'])
+      else:
+        rfid_data['attributes']['owner_id'] = 0
       
+      logger.debug(f"Sending RFID credential update data: {rfid_data}")
+      logger.debug(f"Card ID being sent: '{credential_data.get('card_id')}'")
+      logger.debug(f"Number of bits being sent: {credential_data.get('nb_bits')}")
       result = self._run_in_websocket_thread('credential.update', rfid_data)
       
-      success = result is not None
-      logger.info(f"{'✓' if success else '✗'} RFID credential update {'successful' if success else 'failed'}")
-      return success, result
+      logger.debug(f"Raw result from credential.update: {result}")
+      logger.debug(f"Result type: {type(result)}")
+      logger.debug(f"Result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
+      
+      # Check if the update was successful
+      if result is not None:
+        # Check if it's our success indicator (from empty content responses)
+        if isinstance(result, dict) and result.get('success') and result.get('status_code') == 0:
+          logger.info("✓ RFID credential update successful")
+          return True, result
+        # Check if it's a successful response with status_code: 0
+        elif isinstance(result, dict) and result.get('status_code') == 0:
+          logger.info("✓ RFID credential update successful")
+          return True, result
+        # Check if it's an error response
+        elif isinstance(result, dict) and result.get('status_code') is not None:
+          error_msg = result.get('status_string', 'Unknown error')
+          logger.error(f"✗ RFID credential update failed: {error_msg}")
+          return False, {'error': error_msg}
+        else:
+          # Assume success if we got a response but no status_code (legacy behavior)
+          logger.info("✓ RFID credential update successful (no status_code)")
+          return True, result
+      else:
+        logger.error("✗ RFID credential update failed: result is None")
+        return False, {'error': 'Server returned no response'}
+        
     except Exception as e:
       logger.error(f"✗ Error updating RFID credential {credential_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
   def delete_credential(self, credential_id):
@@ -1368,7 +1414,7 @@ def credential_edit(credential_id):
             }
 
             # Add RFID-specific fields
-            if credential['type'] == 'RFIDCard':
+            if credential['type'] == 'rfid-card':
                 credential_data.update({
                     'card_id': request.form.get('card_id'),
                     'nb_bits': request.form.get('nb_bits', 32)
@@ -1379,16 +1425,16 @@ def credential_edit(credential_id):
                 flash('Alias is required', 'error')
                 return render_template('credentials/edit.html', credential=credential, users=[])
 
-            # Validate card ID format for RFID cards - server expects aa:bb:cc:11 format
-            if credential['type'] == 'RFIDCard':
+            # Validate card ID format for RFID cards - server expects flexible hex format
+            if credential['type'] == 'rfid-card':
                 import re
-                hex_regex = re.compile(r'^[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}:[0-9A-F]{2}$', re.IGNORECASE)
+                hex_regex = re.compile(r'^[0-9A-F]{2}(?::[0-9A-F]{2})*$', re.IGNORECASE)
                 if not hex_regex.match(credential_data['card_id']):
-                    flash('Invalid card ID format. Use hex format like aa:bb:cc:11 (exactly 4 hex pairs separated by colons)', 'error')
+                    flash('Invalid card ID format. Use hex format like aa:bb:cc:11 (hex pairs separated by colons)', 'error')
                     return render_template('credentials/edit.html', credential=credential, users=[])
 
             # Update credential via WebSocket
-            if credential['type'] == 'RFIDCard':
+            if credential['type'] == 'rfid-card':
                 success, result = leosac_client.update_rfid_credential(credential_id, credential_data)
             else:
                 # TODO: Add PIN code update method
@@ -1399,7 +1445,11 @@ def credential_edit(credential_id):
                 flash('Credential updated successfully!', 'success')
                 return redirect(url_for('credential_view', credential_id=credential_id))
             else:
-                error_msg = result.get('status_string', 'Unknown error')
+                # Handle different error response formats
+                if isinstance(result, dict):
+                    error_msg = result.get('error', result.get('status_string', 'Unknown error'))
+                else:
+                    error_msg = str(result) if result else 'Unknown error'
                 flash(f'Failed to update credential: {error_msg}', 'error')
                 return render_template('credentials/edit.html', credential=credential, users=[])
 
