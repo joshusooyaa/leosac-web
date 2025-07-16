@@ -694,21 +694,38 @@ class LeosacWebSocketService:
     """Get all credentials (thread-safe)"""
     logger.info("=== GETTING CREDENTIALS ===")
     try:
-      result = self._run_in_websocket_thread('credential.read', {})
+      result = self._run_in_websocket_thread('credential.read', {'credential_id': 0})
       
       if result and 'data' in result:
         credentials = []
         for cred_data in result['data']:
+          # Extract owner ID from relationship data
+          owner_id = None
+          owner_name = 'Unknown'
+          if (cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id')):
+            owner_id = cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id')
+            # Fetch user data to get username
+            try:
+              user_result = self._run_in_websocket_thread('user.read', {'user_id': int(owner_id)})
+              if user_result and 'data' in user_result and user_result['data']:
+                user_data = user_result['data']
+                if isinstance(user_data, list) and len(user_data) > 0:
+                  user_data = user_data[0]
+                owner_name = user_data.get('attributes', {}).get('username', 'Unknown')
+            except Exception as e:
+              logger.warning(f"Could not fetch user {owner_id}: {e}")
+              owner_name = f"User {owner_id}"
+          
           credential = {
             'id': cred_data.get('id'),
             'type': cred_data.get('type'),
             'alias': cred_data.get('attributes', {}).get('alias'),
             'description': cred_data.get('attributes', {}).get('description'),
-            'owner_id': cred_data.get('attributes', {}).get('owner'),
-            'owner_name': cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('attributes', {}).get('username', 'Unknown'),
-            'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),  # Handle snake_case from server
-            'validity_start': cred_data.get('attributes', {}).get('validity_start'),  # Handle snake_case from server
-            'validity_end': cred_data.get('attributes', {}).get('validity_end'),  # Handle snake_case from server
+            'owner_id': owner_id,
+            'owner_name': owner_name,
+            'validity_enabled': cred_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
+            'validity_start': cred_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
+            'validity_end': cred_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
             'version': cred_data.get('attributes', {}).get('version', 0)
           }
           
@@ -749,16 +766,33 @@ class LeosacWebSocketService:
             logger.warning(f"✗ Credential {credential_id} not found (empty list)")
             return None
         
+        # Extract owner ID from relationship data
+        owner_id = None
+        owner_name = 'Unknown'
+        if (cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id')):
+          owner_id = cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id')
+          # Fetch user data to get username
+          try:
+            user_result = self._run_in_websocket_thread('user.read', {'user_id': int(owner_id)})
+            if user_result and 'data' in user_result and user_result['data']:
+              user_data = user_result['data']
+              if isinstance(user_data, list) and len(user_data) > 0:
+                user_data = user_data[0]
+              owner_name = user_data.get('attributes', {}).get('username', 'Unknown')
+          except Exception as e:
+            logger.warning(f"Could not fetch user {owner_id}: {e}")
+            owner_name = f"User {owner_id}"
+        
         credential = {
           'id': cred_data.get('id'),
           'type': cred_data.get('type'),
           'alias': cred_data.get('attributes', {}).get('alias'),
           'description': cred_data.get('attributes', {}).get('description'),
-          'owner_id': cred_data.get('attributes', {}).get('owner'),
-          'owner_name': cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('attributes', {}).get('username', 'Unknown'),
-          'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),  # Handle snake_case from server
-          'validity_start': cred_data.get('attributes', {}).get('validity_start'),  # Handle snake_case from server
-          'validity_end': cred_data.get('attributes', {}).get('validity_end'),  # Handle snake_case from server
+          'owner_id': owner_id,
+          'owner_name': owner_name,
+          'validity_enabled': cred_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
+          'validity_start': cred_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
+          'validity_end': cred_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
           'version': cred_data.get('attributes', {}).get('version', 0)
         }
         
