@@ -35,6 +35,31 @@ login_manager.login_view = 'login'
 LEOSAC_ADDR = os.environ.get('LEOSAC_ADDR', 'ws://localhost:8888')
 WEBSOCKET_URL = f"{LEOSAC_ADDR}/websocket"
 
+# User ranks matching Ember implementation
+USER_RANKS = ['user', 'viewer', 'manager', 'supervisor', 'administrator']
+
+def convert_rank_int_to_string(rank_int):
+    """Convert rank integer to string (matching Ember user-rank transform)"""
+    rank_mapping = {
+        0: 'user',
+        1: 'viewer',
+        2: 'manager',
+        3: 'supervisor',
+        4: 'administrator'
+    }
+    return rank_mapping.get(rank_int, 'user')
+
+def convert_rank_string_to_int(rank_string):
+    """Convert rank string to integer (matching Ember user-rank transform)"""
+    rank_mapping = {
+        'user': 0,
+        'viewer': 1,
+        'manager': 2,
+        'supervisor': 3,
+        'administrator': 4
+    }
+    return rank_mapping.get(rank_string, 0)
+
 logger.info(f"=== LEOSAC WEB APP STARTING ===")
 logger.info(f"WebSocket URL: {WEBSOCKET_URL}")
 logger.info(f"Current thread: {threading.current_thread().name}")
@@ -44,22 +69,22 @@ class LeosacUser(UserMixin):
     self.id = user_id
     self.username = username
     self.rank = rank
-  
+
   def get_id(self):
     return str(self.id)
-  
+
   def is_authenticated(self):
     return True
-  
+
   def is_active(self):
     return True
-  
+
   def is_anonymous(self):
     return False
 
 class LeosacWebSocketService:
   """Thread-safe WebSocket service for Flask with extensive debugging"""
-  
+
   def __init__(self):
     logger.info("=== INITIALIZING WEBSOCKET SERVICE ===")
     self.websocket = None
@@ -75,49 +100,49 @@ class LeosacWebSocketService:
     self._main_loop = None
     self._service_ready = threading.Event()
     logger.info("WebSocket service initialized")
-  
+
   def start(self):
     """Start the WebSocket service in a dedicated thread"""
     logger.info("=== STARTING WEBSOCKET SERVICE ===")
     logger.info(f"Current thread: {threading.current_thread().name}")
     logger.info(f"Service already running: {self._running}")
     logger.info(f"WebSocket thread alive: {self._websocket_thread.is_alive() if self._websocket_thread else False}")
-    
+
     if self._websocket_thread and self._websocket_thread.is_alive():
       logger.info("WebSocket service already running")
       return
-    
+
     self._running = True
     self._websocket_thread = threading.Thread(target=self._websocket_worker, daemon=True, name="WebSocket-Worker")
     self._websocket_thread.start()
-    
+
     # Wait for service to be ready
     logger.info("Waiting for WebSocket service to be ready...")
     if self._service_ready.wait(timeout=10):
       logger.info("✓ WebSocket service started successfully")
     else:
       logger.error("✗ WebSocket service failed to start within 10 seconds")
-  
+
   def stop(self):
     """Stop the WebSocket service"""
     logger.info("=== STOPPING WEBSOCKET SERVICE ===")
     self._running = False
     if self._websocket_thread:
       self._websocket_thread.join(timeout=5)
-  
+
   def _websocket_worker(self):
     """Worker thread that manages the WebSocket connection"""
     logger.info("=== WEBSOCKET WORKER THREAD STARTED ===")
     logger.info(f"Worker thread: {threading.current_thread().name}")
-    
+
     try:
       self._main_loop = asyncio.new_event_loop()
       asyncio.set_event_loop(self._main_loop)
       logger.info("Event loop created and set")
-      
+
       # Signal that the service is ready
       self._service_ready.set()
-      
+
       self._main_loop.run_until_complete(self._websocket_main_loop())
     except Exception as e:
       logger.error(f"WebSocket worker error: {e}")
@@ -126,23 +151,23 @@ class LeosacWebSocketService:
       logger.info("WebSocket worker thread ending")
       if self._main_loop:
         self._main_loop.close()
-  
+
   async def _websocket_main_loop(self):
     """Main WebSocket loop with extensive debugging"""
     logger.info("=== WEBSOCKET MAIN LOOP STARTED ===")
-    
+
     while self._running:
       try:
         if not self.connected:
           logger.info("Not connected, attempting to connect...")
           await self._connect()
-        
+
         if self.connected:
           await self._process_messages()
           await self._process_message_queue()
-        
+
         await asyncio.sleep(0.1)
-        
+
       except Exception as e:
         logger.error(f"WebSocket main loop error: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -153,14 +178,14 @@ class LeosacWebSocketService:
           except:
             pass
           self.websocket = None
-        
+
         logger.info("Waiting 5 seconds before reconnecting...")
         await asyncio.sleep(5)
-  
+
   async def _connect(self):
     """Connect to WebSocket server with debugging"""
     logger.info(f"=== ATTEMPTING CONNECTION TO {WEBSOCKET_URL} ===")
-    
+
     try:
       logger.info("Creating WebSocket connection...")
       self.websocket = await websockets.connect(
@@ -171,20 +196,20 @@ class LeosacWebSocketService:
       )
       self.connected = True
       logger.info("✓ WebSocket connected successfully")
-      
+
       if self.before_open:
         logger.info(f"Processing {len(self.before_open)} queued messages")
         for message in self.before_open:
           await self.websocket.send(json.dumps(message))
         self.before_open.clear()
         logger.info("Queued messages processed")
-        
+
     except Exception as e:
       logger.error(f"✗ Failed to connect: {e}")
       logger.error(f"Connection traceback: {traceback.format_exc()}")
       self.connected = False
       self.websocket = None
-  
+
   async def _process_messages(self):
     """Process incoming WebSocket messages"""
     try:
@@ -199,7 +224,7 @@ class LeosacWebSocketService:
       self.websocket = None
     except Exception as e:
       logger.error(f"Error processing message: {e}")
-  
+
   async def _process_message_queue(self):
     """Process messages from the queue"""
     try:
@@ -211,27 +236,27 @@ class LeosacWebSocketService:
           processed += 1
         else:
           self.before_open.append(message_data['message'])
-      
+
       if processed > 0:
         logger.debug(f"Processed {processed} queued messages")
-        
+
     except queue.Empty:
       pass
     except Exception as e:
       logger.error(f"Error processing message queue: {e}")
-  
+
   async def _handle_message(self, message):
     """Handle incoming WebSocket message"""
     try:
       data = json.loads(message)
       message_uuid = data.get('uuid')
-      
+
       logger.debug(f"Handling message: {data.get('type')} (UUID: {message_uuid})")
-      
+
       if message_uuid in self.callbacks:
         callback_data = self.callbacks[message_uuid]
         result_queue = callback_data.get('result_queue')
-        
+
         if result_queue:
           if data.get('status_code') == 0:
             logger.debug(f"Success for {message_uuid}")
@@ -248,40 +273,40 @@ class LeosacWebSocketService:
             self.user_info = None
     except json.JSONDecodeError as e:
       logger.error(f"Failed to parse message: {e}")
-  
+
   def send_json(self, command, content):
     """Send JSON message to Leosac server (thread-safe)"""
     logger.debug(f"=== SENDING JSON: {command} ===")
     logger.debug(f"Current thread: {threading.current_thread().name}")
     logger.debug(f"Service ready: {self._service_ready.is_set()}")
     logger.debug(f"Main loop exists: {self._main_loop is not None}")
-    
+
     message_uuid = str(uuid.uuid4())
     message = {
       'uuid': message_uuid,
       'type': command,
       'content': content
     }
-    
+
     logger.debug(f"Created message with UUID: {message_uuid}")
-    
+
     # Create a result queue to wait for the response
     result_queue = queue.Queue()
-    
+
     # Store the callback and queue
     self.callbacks[message_uuid] = {
       'result_queue': result_queue,
       'message': message
     }
-    
+
     # Queue the message
     self._message_queue.put({
       'message': message,
       'uuid': message_uuid
     })
-    
+
     logger.debug(f"Message queued for {command}")
-    
+
     # Wait for the result
     try:
       result = result_queue.get(timeout=15)  # 15 second timeout
@@ -293,24 +318,24 @@ class LeosacWebSocketService:
       if message_uuid in self.callbacks:
         del self.callbacks[message_uuid]
       raise Exception(f"Timeout waiting for response to {command}")
-  
+
   def _run_in_websocket_thread(self, command, content):
     """Send a message and wait for response (thread-safe)"""
     logger.debug(f"=== RUNNING IN WEBSOCKET THREAD: {command} ===")
     logger.debug(f"Current thread: {threading.current_thread().name}")
     logger.debug(f"Main loop exists: {self._main_loop is not None}")
     logger.debug(f"Service ready: {self._service_ready.is_set()}")
-    
+
     if not self._main_loop:
       error_msg = "WebSocket service not started - main loop is None"
       logger.error(error_msg)
       raise Exception(error_msg)
-    
+
     if not self._service_ready.is_set():
       error_msg = "WebSocket service not ready"
       logger.error(error_msg)
       raise Exception(error_msg)
-    
+
     try:
       logger.debug(f"Sending {command} via send_json")
       result = self.send_json(command, content)
@@ -320,21 +345,21 @@ class LeosacWebSocketService:
       logger.error(f"Error in _run_in_websocket_thread: {e}")
       logger.error(f"Traceback: {traceback.format_exc()}")
       raise
-  
+
   def authenticate(self, username, password):
     """Authenticate with username and password (thread-safe)"""
     logger.info(f"=== AUTHENTICATING USER: {username} ===")
     logger.info(f"Current thread: {threading.current_thread().name}")
-    
+
     try:
       logger.debug("Running authentication in websocket thread")
       result = self._run_in_websocket_thread('create_auth_token', {
         'username': username,
         'password': password
       })
-      
+
       logger.debug(f"Authentication result: {result is not None}")
-      
+
       if result:
         with self._lock:
           self.auth_token = result.get('token')
@@ -347,12 +372,12 @@ class LeosacWebSocketService:
       else:
         logger.warning(f"✗ Authentication failed for {username}")
         return False, {'error': 'Authentication failed'}
-        
+
     except Exception as e:
       logger.error(f"✗ Authentication error for {username}: {e}")
       logger.error(f"Authentication traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
-  
+
   def authenticate_with_token(self, token):
     """Authenticate with stored token (thread-safe)"""
     logger.info("=== AUTHENTICATING WITH TOKEN ===")
@@ -376,13 +401,13 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Token authentication error: {e}")
       return False, {'error': str(e)}
-  
+
   def logout(self):
     """Logout from Leosac server (thread-safe)"""
     logger.info("=== LOGOUT ===")
     try:
       self._run_in_websocket_thread('logout', {})
-      
+
       with self._lock:
         self.auth_token = None
         self.user_info = None
@@ -391,7 +416,7 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Logout error: {e}")
       return False
-  
+
   def get_auth_state(self):
     """Get current authentication state (thread-safe)"""
     with self._lock:
@@ -402,14 +427,14 @@ class LeosacWebSocketService:
       }
       logger.debug(f"Auth state: {state}")
       return state
-  
+
   def set_auth_state(self, auth_token, user_info):
     """Set authentication state (thread-safe)"""
     with self._lock:
       self.auth_token = auth_token
       self.user_info = user_info
     logger.debug(f"Auth state set: token={bool(auth_token)}, user={user_info}")
-  
+
   def get_users(self):
     """Get all users (thread-safe)"""
     logger.info("=== GETTING USERS ===")
@@ -417,11 +442,26 @@ class LeosacWebSocketService:
       result = self._run_in_websocket_thread('user.read', {'user_id': 0})
       
       if result and 'data' in result:
+        logger.debug(f"Raw user data from server: {result['data'][:2]}")  # Log first 2 users for debugging
         users = []
         for user_data in result['data']:
+          # Convert rank integer to string
+          rank_int = user_data.get('attributes', {}).get('rank', 0)
+          rank_string = convert_rank_int_to_string(rank_int)
+          
+          logger.debug(f"User {user_data.get('id')}: rank_int={rank_int}, rank_string={rank_string}")
+          
           user = {
             'id': user_data.get('id'),
-            **user_data.get('attributes', {})
+            'username': user_data.get('attributes', {}).get('username'),
+            'firstname': user_data.get('attributes', {}).get('firstname'),
+            'lastname': user_data.get('attributes', {}).get('lastname'),
+            'email': user_data.get('attributes', {}).get('email'),
+            'rank': rank_string,
+            'validity_enabled': user_data.get('attributes', {}).get('validity_enabled', False),
+            'validity_start': user_data.get('attributes', {}).get('validity_start'),
+            'validity_end': user_data.get('attributes', {}).get('validity_end'),
+            'version': user_data.get('attributes', {}).get('version', 0)
           }
           users.append(user)
         logger.info(f"✓ Retrieved {len(users)} users")
@@ -431,7 +471,7 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Error getting users: {e}")
       return []
-  
+
   def get_user(self, user_id):
     """Get a specific user by ID (thread-safe)"""
     logger.info(f"=== GETTING USER: {user_id} ===")
@@ -447,9 +487,21 @@ class LeosacWebSocketService:
             logger.warning(f"✗ User {user_id} not found (empty list)")
             return None
         
+        # Convert rank integer to string
+        rank_int = user_data.get('attributes', {}).get('rank', 0)
+        rank_string = convert_rank_int_to_string(rank_int)
+        
         user = {
           'id': user_data.get('id'),
-          **user_data.get('attributes', {})
+          'username': user_data.get('attributes', {}).get('username'),
+          'firstname': user_data.get('attributes', {}).get('firstname'),
+          'lastname': user_data.get('attributes', {}).get('lastname'),
+          'email': user_data.get('attributes', {}).get('email'),
+          'rank': rank_string,
+          'validity_enabled': user_data.get('attributes', {}).get('validity_enabled', False),
+          'validity_start': user_data.get('attributes', {}).get('validity_start'),
+          'validity_end': user_data.get('attributes', {}).get('validity_end'),
+          'version': user_data.get('attributes', {}).get('version', 0)
         }
         logger.info(f"✓ Retrieved user {user_id}")
         return user
@@ -458,11 +510,15 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Error getting user {user_id}: {e}")
       return None
-  
+
   def create_user(self, user_data):
     """Create a new user (thread-safe)"""
     logger.info(f"=== CREATING USER: {user_data.get('username')} ===")
     try:
+      # Convert rank string to integer for server
+      if 'rank' in user_data:
+        user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
+      
       result = self._run_in_websocket_thread('user.create', {
         'attributes': user_data
       })
@@ -473,11 +529,15 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Error creating user: {e}")
       return False, {'error': str(e)}
-  
+
   def update_user(self, user_id, user_data):
     """Update an existing user (thread-safe)"""
     logger.info(f"=== UPDATING USER: {user_id} ===")
     try:
+      # Convert rank string to integer for server
+      if 'rank' in user_data:
+        user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
+      
       result = self._run_in_websocket_thread('user.update', {
         'user_id': int(user_id),
         'attributes': user_data
@@ -489,7 +549,7 @@ class LeosacWebSocketService:
     except Exception as e:
       logger.error(f"✗ Error updating user {user_id}: {e}")
       return False, {'error': str(e)}
-  
+
   def delete_user(self, user_id):
     """Delete a user (thread-safe)"""
     logger.info(f"=== DELETING USER: {user_id} ===")
@@ -497,12 +557,132 @@ class LeosacWebSocketService:
       result = self._run_in_websocket_thread('user.delete', {
         'user_id': int(user_id)
       })
-      
+
       success = result is not None
       logger.info(f"{'✓' if success else '✗'} User deletion {'successful' if success else 'failed'}")
       return success, result
     except Exception as e:
       logger.error(f"✗ Error deleting user {user_id}: {e}")
+      return False, {'error': str(e)}
+
+  def get_user_groups(self, user_id):
+    """Get user's group memberships (thread-safe)"""
+    logger.info(f"=== GETTING USER GROUPS: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user-group-membership.read', {'user_id': int(user_id)})
+      
+      if result and 'data' in result:
+        memberships = []
+        for membership_data in result['data']:
+          # Convert group rank integer to string
+          group_rank_int = membership_data.get('attributes', {}).get('rank', 0)
+          group_rank_string = 'administrator' if group_rank_int == 2 else 'operator' if group_rank_int == 1 else 'member'
+          
+          membership = {
+            'id': membership_data.get('id'),
+            'user_id': membership_data.get('attributes', {}).get('user_id'),
+            'group_id': membership_data.get('attributes', {}).get('group_id'),
+            'rank': group_rank_string,
+            'timestamp': membership_data.get('attributes', {}).get('timestamp'),
+            'group': membership_data.get('relationships', {}).get('group', {}).get('data', {})
+          }
+          memberships.append(membership)
+        logger.info(f"✓ Retrieved {len(memberships)} group memberships for user {user_id}")
+        return memberships
+      logger.warning(f"✗ No group memberships found for user {user_id}")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting user groups for {user_id}: {e}")
+      return []
+
+  def get_user_credentials(self, user_id):
+    """Get user's credentials (thread-safe)"""
+    logger.info(f"=== GETTING USER CREDENTIALS: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('credential.read', {'owner_id': int(user_id)})
+
+      if result and 'data' in result:
+        credentials = []
+        for cred_data in result['data']:
+          credential = {
+            'id': cred_data.get('id'),
+            'alias': cred_data.get('attributes', {}).get('alias'),
+            'description': cred_data.get('attributes', {}).get('description'),
+            'type': cred_data.get('type'),
+            'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),
+            'validity_start': cred_data.get('attributes', {}).get('validity_start'),
+            'validity_end': cred_data.get('attributes', {}).get('validity_end'),
+            'version': cred_data.get('attributes', {}).get('version', 0)
+          }
+          credentials.append(credential)
+        logger.info(f"✓ Retrieved {len(credentials)} credentials for user {user_id}")
+        return credentials
+      logger.warning(f"✗ No credentials found for user {user_id}")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting user credentials for {user_id}: {e}")
+      return []
+
+  def get_user_schedules(self, user_id):
+    """Get user's schedule mappings (thread-safe)"""
+    logger.info(f"=== GETTING USER SCHEDULES: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('schedule-mapping.read', {'user_id': int(user_id)})
+
+      if result and 'data' in result:
+        schedules = []
+        for schedule_data in result['data']:
+          schedule = {
+            'id': schedule_data.get('id'),
+            'alias': schedule_data.get('attributes', {}).get('alias'),
+            'schedule_id': schedule_data.get('relationships', {}).get('schedule', {}).get('data', {}).get('id'),
+            'schedule_name': schedule_data.get('relationships', {}).get('schedule', {}).get('data', {}).get('attributes', {}).get('name', 'Unknown'),
+            'version': schedule_data.get('attributes', {}).get('version', 0)
+          }
+          schedules.append(schedule)
+        logger.info(f"✓ Retrieved {len(schedules)} schedule mappings for user {user_id}")
+        return schedules
+      logger.warning(f"✗ No schedule mappings found for user {user_id}")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting user schedules for {user_id}: {e}")
+      return []
+
+  def change_user_password(self, user_id, current_password, new_password):
+    """Change user password (thread-safe)"""
+    logger.info(f"=== CHANGING PASSWORD FOR USER: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user.change_password', {
+        'user_id': int(user_id),
+        'current_password': current_password,
+        'new_password': new_password
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Password change {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error changing password for user {user_id}: {e}")
+      return False, {'error': str(e)}
+
+  def update_user_profile(self, user_id, user_data):
+    """Update user profile (thread-safe)"""
+    logger.info(f"=== UPDATING USER PROFILE: {user_id} ===")
+    try:
+      # Convert rank string to integer for server
+      if 'rank' in user_data:
+        user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
+      
+      result = self._run_in_websocket_thread('user.update', {
+        'user_id': int(user_id),
+        'attributes': user_data
+      })
+      
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Profile update {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error updating user profile {user_id}: {e}")
       return False, {'error': str(e)}
 
 # Global WebSocket client
@@ -538,11 +718,15 @@ def load_user(user_id):
             leosac_client.get_auth_state()['user_info'] and 
             str(leosac_client.get_auth_state()['user_info'].get('user_id')) == user_id):
             
+            # Get the user's rank from the session or default to 'user'
+            user_rank = user_info.get('rank', 'user')
+            
             user = LeosacUser(
                 user_info['user_id'],
-                user_info['username']
+                user_info['username'],
+                user_rank
             )
-            print(f"Returning user: {user.username}")
+            print(f"Returning user: {user.username} with rank: {user.rank}")
             return user
         else:
             print("WebSocket client state mismatch, clearing session")
@@ -566,47 +750,57 @@ def login():
     logger.info(f"Current thread: {threading.current_thread().name}")
     logger.info(f"Request method: {request.method}")
     logger.info(f"Current user authenticated: {current_user.is_authenticated}")
-    
+
     if current_user.is_authenticated:
         logger.info("User already authenticated, redirecting to index")
         return redirect(url_for('index'))
-    
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         logger.info(f"Login attempt for username: {username}")
         logger.info(f"WebSocket service ready: {leosac_client._service_ready.is_set()}")
         logger.info(f"WebSocket connected: {leosac_client.connected}")
-        
+
         if not username or not password:
             logger.warning("Missing username or password")
             flash('Please provide both username and password', 'error')
             return render_template('login.html')
-        
+
         try:
             logger.info("Calling leosac_client.authenticate...")
             # Use the WebSocket service (thread-safe)
             success, result = leosac_client.authenticate(username, password)
-            
+
             logger.info(f"Authentication result: success={success}, result={result}")
-            
+
             if success:
                 try:
                     logger.info("Authentication successful, creating user object...")
                     # Get the current auth state
                     auth_state = leosac_client.get_auth_state()
+                    
+                    # Get user details to get the rank
+                    user_details = leosac_client.get_user(auth_state['user_info']['user_id'])
+                    user_rank = user_details.get('rank', 'user') if user_details else 'user'
+                    
                     user = LeosacUser(
                         auth_state['user_info']['user_id'],
-                        auth_state['user_info']['username']
+                        auth_state['user_info']['username'],
+                        user_rank
                     )
-                    logger.info(f"Creating user object: {user.username} (ID: {user.id})")
+                    logger.info(f"Creating user object: {user.username} (ID: {user.id}) with rank: {user.rank}")
                     logger.info(f"User info before login: {auth_state['user_info']}")
                     logger.info(f"Auth token before login: {auth_state['auth_token']}")
                     
                     # Store authentication info in session
                     session['auth_token'] = auth_state['auth_token']
-                    session['user_info'] = auth_state['user_info']
+                    session['user_info'] = {
+                        'user_id': auth_state['user_info']['user_id'],
+                        'username': auth_state['user_info']['username'],
+                        'rank': user_rank
+                    }
                     
                     logger.info("About to call login_user...")
                     login_user(user)
@@ -632,30 +826,30 @@ def login():
             logger.error(f"Authentication exception: {e}")
             logger.error(f"Login route traceback: {traceback.format_exc()}")
             flash(f'Connection error: {str(e)}', 'error')
-    
+
     return render_template('login.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     print("Logout route called")
-    
+
     # Use the WebSocket service for logout
     try:
         leosac_client.logout()
         print("WebSocket logout successful")
     except Exception as e:
         print(f"WebSocket logout error: {e}")
-    
+
     # Clear session data
     session.pop('auth_token', None)
     session.pop('user_info', None)
-    
+
     # Clear WebSocket client state
     leosac_client.set_auth_state(None, None)
-    
+
     print("Session and client state cleared")
-    
+
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
@@ -709,8 +903,8 @@ def users_create():
             auth_state = leosac_client.get_auth_state()
             if not auth_state['connected']:
                 flash('WebSocket connection not available. Please try again.', 'error')
-                return render_template('users/create.html', user_data=request.form, ranks=['admin', 'user'])
-            
+                return render_template('users/create.html', user_data=request.form, ranks=USER_RANKS)
+
             # Get form data
             user_data = {
                 'username': request.form.get('username'),
@@ -718,33 +912,35 @@ def users_create():
                 'lastname': request.form.get('lastname'),
                 'email': request.form.get('email'),
                 'password': request.form.get('password'),
-                'rank': request.form.get('rank', 'user')
+                'rank': request.form.get('rank', 'user'),
+                'validity_enabled': request.form.get('validity_enabled') == 'on',
+                'validity_start': request.form.get('validity_start'),
+                'validity_end': request.form.get('validity_end')
             }
-            
+
             # Validate required fields
-            if not all([user_data['username'], user_data['firstname'], 
+            if not all([user_data['username'], user_data['firstname'],
                        user_data['lastname'], user_data['email'], user_data['password']]):
                 flash('All fields are required', 'error')
-                return render_template('users/create.html', user_data=user_data, ranks=['admin', 'user'])
-            
+                return render_template('users/create.html', user_data=user_data, ranks=USER_RANKS)
+
             # Create user via WebSocket
             success, result = leosac_client.create_user(user_data)
-            
+
             if success:
                 flash('User created successfully!', 'success')
                 return redirect(url_for('users_list'))
             else:
                 error_msg = result.get('status_string', 'Unknown error')
                 flash(f'Failed to create user: {error_msg}', 'error')
-                return render_template('users/create.html', user_data=user_data)
-                
+                return render_template('users/create.html', user_data=user_data, ranks=USER_RANKS)
+
         except Exception as e:
             flash(f'Error creating user: {str(e)}', 'error')
-            return render_template('users/create.html', user_data=request.form, ranks=['admin', 'user'])
-    
+            return render_template('users/create.html', user_data=request.form, ranks=USER_RANKS)
+
     # Available user ranks
-    ranks = ['admin', 'user']
-    return render_template('users/create.html', ranks=ranks)
+    return render_template('users/create.html', ranks=USER_RANKS)
 
 @app.route('/users/delete/<int:user_id>', methods=['POST'])
 @login_required
@@ -756,24 +952,24 @@ def users_delete(user_id):
         if not auth_state['connected']:
             flash('WebSocket connection not available. Please try again.', 'error')
             return redirect(url_for('users_list'))
-        
+
         # Don't allow deleting the current user
         if user_id == current_user.id:
             flash('You cannot delete your own account', 'error')
             return redirect(url_for('users_list'))
-        
+
         # Delete user via WebSocket
         success, result = leosac_client.delete_user(user_id)
-        
+
         if success:
             flash('User deleted successfully!', 'success')
         else:
             error_msg = result.get('status_string', 'Unknown error')
             flash(f'Failed to delete user: {error_msg}', 'error')
-            
+
     except Exception as e:
         flash(f'Error deleting user: {str(e)}', 'error')
-    
+
     return redirect(url_for('users_list'))
 
 @app.route('/groups')
@@ -863,19 +1059,119 @@ def profile(user_id):
         if not auth_state['connected']:
             flash('WebSocket connection not available. Please try again.', 'error')
             return redirect(url_for('users_list'))
-        
+
         # Get user details from WebSocket
         user = leosac_client.get_user(user_id)
-        
+
         if user:
-            return render_template('profile.html', user=user)
+            # Get additional user data
+            user_groups = leosac_client.get_user_groups(user_id)
+            user_credentials = leosac_client.get_user_credentials(user_id)
+            user_schedules = leosac_client.get_user_schedules(user_id)
+
+            return render_template('profile.html',
+                                 user=user,
+                                 user_groups=user_groups,
+                                 user_credentials=user_credentials,
+                                 user_schedules=user_schedules,
+                                 ranks=USER_RANKS)
         else:
             flash('User not found', 'error')
             return redirect(url_for('users_list'))
-            
+
     except Exception as e:
         flash(f'Error loading user profile: {str(e)}', 'error')
         return redirect(url_for('users_list'))
+
+@app.route('/profile/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def profile_edit(user_id):
+    """Edit user profile"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('profile', user_id=user_id))
+
+        # Get user details
+        user = leosac_client.get_user(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('users_list'))
+
+        if request.method == 'POST':
+            # Get form data
+            user_data = {
+                'firstname': request.form.get('firstname'),
+                'lastname': request.form.get('lastname'),
+                'email': request.form.get('email'),
+                'rank': request.form.get('rank', 'user'),
+                'validity_enabled': request.form.get('validity_enabled') == 'on',
+                'validity_start': request.form.get('validity_start'),
+                'validity_end': request.form.get('validity_end')
+            }
+
+            # Validate required fields
+            if not all([user_data['firstname'], user_data['lastname'], user_data['email']]):
+                flash('First name, last name, and email are required', 'error')
+                return render_template('profile_edit.html', user=user, ranks=USER_RANKS)
+
+            # Update user via WebSocket
+            success, result = leosac_client.update_user_profile(user_id, user_data)
+
+            if success:
+                flash('Profile updated successfully!', 'success')
+                return redirect(url_for('profile', user_id=user_id))
+            else:
+                error_msg = result.get('status_string', 'Unknown error')
+                flash(f'Failed to update profile: {error_msg}', 'error')
+                return render_template('profile_edit.html', user=user, ranks=USER_RANKS)
+
+        return render_template('profile_edit.html', user=user, ranks=USER_RANKS)
+
+    except Exception as e:
+        flash(f'Error editing profile: {str(e)}', 'error')
+        return redirect(url_for('profile', user_id=user_id))
+
+@app.route('/profile/<int:user_id>/change-password', methods=['POST'])
+@login_required
+def profile_change_password(user_id):
+    """Change user password"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('profile', user_id=user_id))
+
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        new_password2 = request.form.get('new_password2')
+
+        # Validate passwords
+        if not new_password:
+            flash('New password is required', 'error')
+            return redirect(url_for('profile', user_id=user_id))
+
+        if new_password != new_password2:
+            flash('New passwords do not match', 'error')
+            return redirect(url_for('profile', user_id=user_id))
+
+        # Change password via WebSocket
+        success, result = leosac_client.change_user_password(user_id, current_password, new_password)
+
+        if success:
+            flash('Password changed successfully!', 'success')
+        else:
+            error_msg = result.get('status_string', 'Unknown error')
+            flash(f'Failed to change password: {error_msg}', 'error')
+
+        return redirect(url_for('profile', user_id=user_id))
+
+    except Exception as e:
+        flash(f'Error changing password: {str(e)}', 'error')
+        return redirect(url_for('profile', user_id=user_id))
 
 @app.route('/settings')
 @login_required
@@ -885,25 +1181,25 @@ def settings():
 if __name__ == '__main__':
     logger.info("=== MAIN APPLICATION STARTING ===")
     logger.info(f"Current thread: {threading.current_thread().name}")
-    
+
     # Start WebSocket client
     logger.info("Starting WebSocket client...")
     start_websocket_client()
-    
+
     # Give some time for initial connection
     logger.info("Waiting 3 seconds for initial connection...")
     time.sleep(3)
-    
+
     # Check if connection was established
     logger.info("Checking connection status...")
     logger.info(f"Service ready: {leosac_client._service_ready.is_set()}")
     logger.info(f"WebSocket connected: {leosac_client.connected}")
     logger.info(f"WebSocket thread alive: {leosac_client._websocket_thread.is_alive() if leosac_client._websocket_thread else False}")
-    
+
     if leosac_client.connected:
         logger.info("✓ WebSocket client connected successfully")
     else:
         logger.warning("⚠ WebSocket client not connected, will attempt connection on first request")
-    
+
     logger.info("Starting Flask app...")
     app.run(debug=True, host='0.0.0.0', port=5000) 

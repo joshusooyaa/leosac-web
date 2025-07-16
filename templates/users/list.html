@@ -36,8 +36,8 @@
                             <td>{{ user.email }}</td>
                             <td>{{ user.username }}</td>
                             <td>
-                                <span class="badge badge-{{ 'danger' if user.rank == 'admin' else 'secondary' }}">
-                                    {{ user.rank }}
+                                <span class="badge badge-{{ 'danger' if user.rank == 'administrator' else 'warning' if user.rank == 'supervisor' else 'info' if user.rank == 'manager' else 'secondary' if user.rank == 'viewer' else 'primary' }}">
+                                    {{ user.rank.title() }}
                                 </span>
                             </td>
                             <td>
