@@ -469,10 +469,12 @@ class LeosacWebSocketService:
             'lastname': user_data.get('attributes', {}).get('lastname'),
             'email': user_data.get('attributes', {}).get('email'),
             'rank': rank_string,
-            'validity_enabled': user_data.get('attributes', {}).get('validity_enabled', False),
-            'validity_start': user_data.get('attributes', {}).get('validity_start'),
-            'validity_end': user_data.get('attributes', {}).get('validity_end'),
-            'version': user_data.get('attributes', {}).get('version', 0)
+            'validity_enabled': user_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
+            'validity_start': user_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
+            'validity_end': user_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
+            'version': user_data.get('attributes', {}).get('version', 0),
+            # Include relationship data that's already in the response
+            'relationships': user_data.get('relationships', {})
           }
           users.append(user)
         logger.info(f"✓ Retrieved {len(users)} users")
@@ -509,10 +511,12 @@ class LeosacWebSocketService:
           'lastname': user_data.get('attributes', {}).get('lastname'),
           'email': user_data.get('attributes', {}).get('email'),
           'rank': rank_string,
-          'validity_enabled': user_data.get('attributes', {}).get('validity_enabled', False),
-          'validity_start': user_data.get('attributes', {}).get('validity_start'),
-          'validity_end': user_data.get('attributes', {}).get('validity_end'),
-          'version': user_data.get('attributes', {}).get('version', 0)
+          'validity_enabled': user_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
+          'validity_start': user_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
+          'validity_end': user_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
+          'version': user_data.get('attributes', {}).get('version', 0),
+          # Include relationship data that's already in the response
+          'relationships': user_data.get('relationships', {})
         }
         logger.info(f"✓ Retrieved user {user_id}")
         return user
@@ -610,28 +614,67 @@ class LeosacWebSocketService:
     """Get user's credentials (thread-safe)"""
     logger.info(f"=== GETTING USER CREDENTIALS: {user_id} ===")
     try:
-      result = self._run_in_websocket_thread('credential.read', {'owner_id': int(user_id)})
+      # Get all credentials and filter by owner_id on client side
+      # The server doesn't support filtering by owner_id in credential.read
+      result = self._run_in_websocket_thread('credential.read', {'credential_id': 0})
+      
+      logger.debug(f"Raw credential result for user {user_id}: {result}")
 
       if result and 'data' in result:
         credentials = []
+        logger.debug(f"Processing {len(result['data'])} total credentials, filtering for user {user_id}")
+        
         for cred_data in result['data']:
-          credential = {
-            'id': cred_data.get('id'),
-            'alias': cred_data.get('attributes', {}).get('alias'),
-            'description': cred_data.get('attributes', {}).get('description'),
-            'type': cred_data.get('type'),
-            'validity_enabled': cred_data.get('attributes', {}).get('validity_enabled', False),
-            'validity_start': cred_data.get('attributes', {}).get('validity_start'),
-            'validity_end': cred_data.get('attributes', {}).get('validity_end'),
-            'version': cred_data.get('attributes', {}).get('version', 0)
-          }
-          credentials.append(credential)
+          logger.debug(f"Processing credential: {cred_data}")
+          
+          # Check if this credential belongs to the user
+          owner_id = None
+          if cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id'):
+            owner_id = cred_data.get('relationships', {}).get('owner', {}).get('data', {}).get('id')
+          
+          logger.debug(f"Credential {cred_data.get('id')} owner_id: {owner_id}, looking for user_id: {user_id}")
+          
+          # Only include credentials owned by this user
+          if str(owner_id) == str(user_id):
+            credential = {
+              'id': cred_data.get('id'),
+              'alias': cred_data.get('attributes', {}).get('alias'),
+              'description': cred_data.get('attributes', {}).get('description'),
+              'type': cred_data.get('type'),
+              'validity_enabled': cred_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
+              'validity_start': cred_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
+              'validity_end': cred_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
+              'version': cred_data.get('attributes', {}).get('version', 0)
+            }
+            
+            # Add RFID-specific fields
+            if cred_data.get('type') == 'rfid-card':
+              card_id = cred_data.get('attributes', {}).get('card-id')  # Handle hyphens from server
+              nb_bits = cred_data.get('attributes', {}).get('nb-bits')  # Handle hyphens from server
+              credential.update({
+                'card_id': card_id,
+                'nb_bits': nb_bits,
+                'display_identifier': card_id
+              })
+            elif cred_data.get('type') == 'pin-code':
+              credential.update({
+                'code': cred_data.get('attributes', {}).get('code'),
+                'display_identifier': '***' + cred_data.get('attributes', {}).get('code', '')[-4:] if cred_data.get('attributes', {}).get('code') else 'N/A'
+              })
+            
+            credentials.append(credential)
+            logger.debug(f"Added credential for user {user_id}: {credential}")
+          else:
+            logger.debug(f"Skipping credential {cred_data.get('id')} - not owned by user {user_id}")
+        
         logger.info(f"✓ Retrieved {len(credentials)} credentials for user {user_id}")
         return credentials
-      logger.warning(f"✗ No credentials found for user {user_id}")
-      return []
+      else:
+        logger.warning(f"✗ No credentials found for user {user_id} - result: {result}")
+        return []
     except Exception as e:
       logger.error(f"✗ Error getting user credentials for {user_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
       return []
 
   def get_user_schedules(self, user_id):
@@ -1554,14 +1597,36 @@ def profile(user_id):
             flash('WebSocket connection not available. Please try again.', 'error')
             return redirect(url_for('users_list'))
 
-        # Get user details from WebSocket
+        # Get user details from WebSocket (includes relationships)
         user = leosac_client.get_user(user_id)
+        
+        # Debug: Log the full user response to see what relationships are included
+        logger.debug(f"Full user response for user {user_id}: {user}")
 
         if user:
-            # Get additional user data
-            user_groups = leosac_client.get_user_groups(user_id)
-            user_credentials = leosac_client.get_user_credentials(user_id)
-            user_schedules = leosac_client.get_user_schedules(user_id)
+            # Always fetch detailed relationship data for the user profile
+            # This ensures we get all the data regardless of relationship structure
+            user_groups = []
+            user_credentials = []
+            user_schedules = []
+            
+            try:
+                user_groups = leosac_client.get_user_groups(user_id)
+                logger.debug(f"Fetched {len(user_groups)} user groups")
+            except Exception as e:
+                logger.warning(f"Could not fetch user groups: {e}")
+            
+            try:
+                user_credentials = leosac_client.get_user_credentials(user_id)
+                logger.debug(f"Fetched {len(user_credentials)} user credentials")
+            except Exception as e:
+                logger.warning(f"Could not fetch user credentials: {e}")
+            
+            try:
+                user_schedules = leosac_client.get_user_schedules(user_id)
+                logger.debug(f"Fetched {len(user_schedules)} user schedules")
+            except Exception as e:
+                logger.warning(f"Could not fetch user schedules: {e}")
 
             return render_template('profile.html',
                                  user=user,
