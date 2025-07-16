@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}System Overview - Leosac Web GUI{% endblock %}
+{% block page_title %}System Overview{% endblock %}
+
+{% block content %}
+<div class="col-lg-12 col-md-12">
+    <div class="row">
+        <div class="col-md-12 space-bottom">
+            <p>System overview for Leosac Web GUI</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">General Information</h5>
+                </div>
+                <div class="card-body">
+                    <p>System overview component will be implemented here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="logPerPage">Page Size</label>
+                <input type="number" class="form-control" id="logPerPage" value="50">
+            </div>
+        </div>
+        <div class="col-md-5 text-center">
+            <p>Pagination will be implemented here</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <p>Total logs: 0</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Last Logs</h5>
+        </div>
+        <div class="card-body">
+            <p>Logs view will be implemented here</p>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Create New Access Point</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="form-group">
+              <label for="name">Access Point Name</label>
+              <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="access_point_type">Access Point Type</label>
+              <select class="form-control" id="access_point_type" name="access_point_type" required>
+                <option value="card_reader">Card Reader</option>
+                <option value="keypad">Keypad</option>
+                <option value="biometric">Biometric</option>
+                <option value="mobile">Mobile</option>
+                <option value="intercom">Intercom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="zone">Zone</label>
+              <select class="form-control" id="zone" name="zone" required>
+                <option value="">Select a zone</option>
+                <!-- Zones will be populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="door">Door</label>
+              <select class="form-control" id="door" name="door">
+                <option value="">No Door</option>
+                <!-- Doors will be populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="ip_address">IP Address</label>
+              <input type="text" class="form-control" id="ip_address" name="ip_address" placeholder="192.168.1.100">
+            </div>
+            <div class="form-group">
+              <label for="mac_address">MAC Address</label>
+              <input type="text" class="form-control" id="mac_address" name="mac_address" placeholder="00:11:22:33:44:55">
+            </div>
+            <div class="form-group">
+              <label for="status">Status</label>
+              <select class="form-control" id="status" name="status" required>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="offline">Offline</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Access Point</button>
+            <a href="{{ url_for('access_points_list') }}" class="btn btn-secondary">Cancel</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

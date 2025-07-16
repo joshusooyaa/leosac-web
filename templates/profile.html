@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Leosac Web GUI{% endblock %}
+{% block page_title %}Profile{% endblock %}
+
+{% block content %}
+<div class="col-lg-12 col-md-12">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">User Profile</h5>
+                </div>
+                <div class="card-body">
+                    <p>Profile information for user ID: {{ user_id }}</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        User profile management will be implemented here.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

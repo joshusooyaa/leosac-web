@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Access Points - Leosac Web GUI{% endblock %}
+{% block page_title %}Access Points{% endblock %}
+
+{% block content %}
+<div class="col-lg-12 col-md-12">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Access Point List</h5>
+                    <a href="{{ url_for('access_points_create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Access Point
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Door</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center">Access point list will be implemented here</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

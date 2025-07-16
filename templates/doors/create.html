@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Create New Door</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="form-group">
+              <label for="name">Door Name</label>
+              <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="zone">Zone</label>
+              <select class="form-control" id="zone" name="zone" required>
+                <option value="">Select a zone</option>
+                <!-- Zones will be populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="door_type">Door Type</label>
+              <select class="form-control" id="door_type" name="door_type" required>
+                <option value="single">Single Door</option>
+                <option value="double">Double Door</option>
+                <option value="sliding">Sliding Door</option>
+                <option value="revolving">Revolving Door</option>
+                <option value="gate">Gate</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="access_point">Access Point</label>
+              <select class="form-control" id="access_point" name="access_point">
+                <option value="">No Access Point</option>
+                <!-- Access points will be populated dynamically -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="status">Status</label>
+              <select class="form-control" id="status" name="status" required>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Door</button>
+            <a href="{{ url_for('doors_list') }}" class="btn btn-secondary">Cancel</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

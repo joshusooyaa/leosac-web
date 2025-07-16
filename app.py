@@ -30,6 +30,18 @@ class LeosacUser(UserMixin):
         self.id = user_id
         self.username = username
         self.rank = rank
+    
+    def get_id(self):
+        return str(self.id)
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_active(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
 
 class LeosacWebSocketClient:
     def __init__(self):
@@ -72,11 +84,13 @@ class LeosacWebSocketClient:
             data = json.loads(message)
             message_uuid = data.get('uuid')
             
+            print(f"Received message with UUID: {message_uuid}, type: {data.get('type')}, status_code: {data.get('status_code')}")
+            
             if message_uuid in self.callbacks:
                 callback = self.callbacks[message_uuid]
                 if data.get('status_code') == 0:
-                    # Success
-                    callback['success'](data.get('content', {}))
+                    # Success - pass the full response object, not just content
+                    callback['success'](data)
                 else:
                     # Error
                     callback['error'](data)
@@ -106,15 +120,19 @@ class LeosacWebSocketClient:
             'content': content
         }
         
+        print(f"Sending message: {command} with UUID: {message_uuid}")
+        
         # Create a promise-like structure
         future = asyncio.Future()
         
         def on_success(data):
             if not future.done():
+                print(f"Success callback for {message_uuid}: {data}")
                 future.set_result(data)
         
         def on_error(error):
             if not future.done():
+                print(f"Error callback for {message_uuid}: {error}")
                 future.set_exception(Exception(f"Leosac error: {error.get('status_string', 'Unknown error')}"))
         
         self.callbacks[message_uuid] = {
@@ -134,10 +152,11 @@ class LeosacWebSocketClient:
             })
             
             # Check if authentication was successful
-            if result.get('status') == 0:
-                self.auth_token = result.get('token')
+            if result.get('status_code') == 0:
+                content = result.get('content', {})
+                self.auth_token = content.get('token')
                 self.user_info = {
-                    'user_id': result.get('user_id'),
+                    'user_id': content.get('user_id'),
                     'username': username
                 }
                 return True, result
@@ -153,11 +172,12 @@ class LeosacWebSocketClient:
                 'token': token
             })
             
-            if result.get('status') == 0:
+            if result.get('status_code') == 0:
+                content = result.get('content', {})
                 self.auth_token = token
                 self.user_info = {
-                    'user_id': result.get('user_id'),
-                    'username': result.get('username')
+                    'user_id': content.get('user_id'),
+                    'username': content.get('username')
                 }
                 return True, result
             else:
@@ -181,16 +201,47 @@ leosac_client = LeosacWebSocketClient()
 
 @login_manager.user_loader
 def load_user(user_id):
-    if leosac_client.user_info and str(leosac_client.user_info['user_id']) == user_id:
-        return LeosacUser(
-            leosac_client.user_info['user_id'],
-            leosac_client.user_info['username']
-        )
+    # This function is called by Flask-Login to load a user from the session
+    # We need to check if the user is still authenticated with the server
+    print(f"load_user called with user_id: {user_id}")
+    
+    # Check if we have auth info in the session
+    auth_token = session.get('auth_token')
+    user_info = session.get('user_info')
+    
+    print(f"Session auth_token: {bool(auth_token)}")
+    print(f"Session user_info: {user_info}")
+    
+    if user_info and str(user_info.get('user_id')) == user_id and auth_token:
+        # Restore the WebSocket client state from session
+        leosac_client.auth_token = auth_token
+        leosac_client.user_info = user_info
+        
+        # Check if the WebSocket client state matches the session
+        if (leosac_client.auth_token == auth_token and 
+            leosac_client.user_info and 
+            str(leosac_client.user_info.get('user_id')) == user_id):
+            
+            user = LeosacUser(
+                user_info['user_id'],
+                user_info['username']
+            )
+            print(f"Returning user: {user.username}")
+            return user
+        else:
+            print("WebSocket client state mismatch, clearing session")
+            # Clear invalid session
+            session.pop('auth_token', None)
+            session.pop('user_info', None)
+            return None
+    else:
+        print("No valid session found")
     return None
 
 @app.route('/')
 @login_required
 def index():
+    print(f"Index route accessed by user: {current_user.username if current_user.is_authenticated else 'None'}")
     return render_template('index.html', user=current_user, config={'LEOSAC_ADDR': LEOSAC_ADDR})
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -202,52 +253,113 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
+        print(f"Login attempt for username: {username}")
+        
         if not username or not password:
             flash('Please provide both username and password', 'error')
             return render_template('login.html')
         
-        # Run authentication in async context
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
+        import asyncio
         try:
-            success, result = loop.run_until_complete(leosac_client.authenticate(username, password))
+            # Use the WebSocket client's event loop
+            if hasattr(leosac_client, '_loop'):
+                loop = leosac_client._loop
+                # Use run_coroutine_threadsafe to communicate with the WebSocket client
+                future = asyncio.run_coroutine_threadsafe(
+                    leosac_client.authenticate(username, password), loop
+                )
+                success, result = future.result(timeout=5.0)
+            else:
+                # Fallback: create a new event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    success, result = loop.run_until_complete(leosac_client.authenticate(username, password))
+                finally:
+                    loop.close()
             
             print(f"Authentication result: success={success}, result={result}")
             
             if success:
-                user = LeosacUser(
-                    leosac_client.user_info['user_id'],
-                    leosac_client.user_info['username']
-                )
-                login_user(user)
-                flash(f'Welcome {username}!', 'success')
-                return redirect(url_for('index'))
+                try:
+                    print("Authentication successful, creating user object...")
+                    user = LeosacUser(
+                        leosac_client.user_info['user_id'],
+                        leosac_client.user_info['username']
+                    )
+                    print(f"Creating user object: {user.username} (ID: {user.id})")
+                    print(f"User info before login: {leosac_client.user_info}")
+                    print(f"Auth token before login: {leosac_client.auth_token}")
+                    
+                    # Store authentication info in session
+                    session['auth_token'] = leosac_client.auth_token
+                    session['user_info'] = leosac_client.user_info
+                    
+                    print("About to call login_user...")
+                    login_user(user)
+                    print("login_user completed successfully")
+                    
+                    print(f"User authenticated: {current_user.is_authenticated}")
+                    print(f"Current user: {current_user.username if current_user.is_authenticated else 'None'}")
+                    print(f"Session stored: auth_token={bool(session.get('auth_token'))}, user_info={session.get('user_info')}")
+                    
+                    flash(f'Welcome {username}!', 'success')
+                    print("About to redirect to index...")
+                    return redirect(url_for('index'))
+                except Exception as e:
+                    print(f"Exception in login success block: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    flash(f'Login error: {str(e)}', 'error')
+                    return render_template('login.html')
             else:
-                error_msg = result.get("message", "Unknown error")
+                error_msg = result.get("message", result.get("error", "Unknown error"))
                 print(f"Authentication failed: {error_msg}")
                 flash(f'Authentication failed: {error_msg}', 'error')
         except Exception as e:
             print(f"Authentication exception: {e}")
             flash(f'Connection error: {str(e)}', 'error')
-        finally:
-            loop.close()
     
     return render_template('login.html')
 
 @app.route('/logout')
 @login_required
 def logout():
-    # Run logout in async context
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    print("Logout route called")
     
-    try:
-        loop.run_until_complete(leosac_client.logout())
-    except Exception as e:
-        print(f"Logout error: {e}")
-    finally:
-        loop.close()
+    # Use the WebSocket client's event loop for logout
+    if hasattr(leosac_client, '_loop'):
+        loop = leosac_client._loop
+        # Use run_coroutine_threadsafe to communicate with the WebSocket client
+        future = asyncio.run_coroutine_threadsafe(
+            leosac_client.logout(), loop
+        )
+        try:
+            future.result(timeout=5.0)
+            print("WebSocket logout successful")
+        except Exception as e:
+            print(f"WebSocket logout error: {e}")
+    else:
+        # Fallback: create a new event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(leosac_client.logout())
+            print("WebSocket logout successful (fallback)")
+        except Exception as e:
+            print(f"WebSocket logout error: {e}")
+        finally:
+            loop.close()
+    
+    # Clear session data
+    session.pop('auth_token', None)
+    session.pop('user_info', None)
+    
+    # Clear WebSocket client state
+    leosac_client.auth_token = None
+    leosac_client.user_info = None
+    
+    print("Session and client state cleared")
     
     logout_user()
     flash('You have been logged out.', 'info')
@@ -263,11 +375,128 @@ def status():
         'user_info': leosac_client.user_info
     }
 
+# Overview routes
+@app.route('/system-overview')
+@login_required
+def system_overview():
+    return render_template('system_overview.html')
+
+@app.route('/access-overview')
+@login_required
+def access_overview():
+    return render_template('access_overview.html')
+
+@app.route('/zone-overview')
+@login_required
+def zone_overview():
+    return render_template('zone_overview.html')
+
+# Access management routes
+@app.route('/users')
+@login_required
+def users_list():
+    return render_template('users/list.html')
+
+@app.route('/users/create')
+@login_required
+def users_create():
+    return render_template('users/create.html')
+
+@app.route('/groups')
+@login_required
+def groups_list():
+    return render_template('groups/list.html')
+
+@app.route('/groups/create')
+@login_required
+def groups_create():
+    return render_template('groups/create.html')
+
+@app.route('/credentials')
+@login_required
+def credentials_list():
+    return render_template('credentials/list.html')
+
+@app.route('/credentials/rfid/create')
+@login_required
+def credentials_rfid_create():
+    return render_template('credentials/rfid_create.html')
+
+@app.route('/credentials/pin/create')
+@login_required
+def credentials_pin_create():
+    return render_template('credentials/pin_create.html')
+
+@app.route('/schedules')
+@login_required
+def schedules_list():
+    return render_template('schedules/list.html')
+
+@app.route('/schedules/create')
+@login_required
+def schedules_create():
+    return render_template('schedules/create.html')
+
+# Hardware management routes
+@app.route('/zones')
+@login_required
+def zones_list():
+    return render_template('zones/list.html')
+
+@app.route('/zones/create')
+@login_required
+def zones_create():
+    return render_template('zones/create.html')
+
+@app.route('/doors')
+@login_required
+def doors_list():
+    return render_template('doors/list.html')
+
+@app.route('/doors/create')
+@login_required
+def doors_create():
+    return render_template('doors/create.html')
+
+@app.route('/access-points')
+@login_required
+def access_points_list():
+    return render_template('access_points/list.html')
+
+@app.route('/access-points/create')
+@login_required
+def access_points_create():
+    return render_template('access_points/create.html')
+
+@app.route('/updates')
+@login_required
+def updates():
+    return render_template('updates.html')
+
+# System routes
+@app.route('/auditlog')
+@login_required
+def auditlog():
+    return render_template('auditlog.html')
+
+@app.route('/profile/<int:user_id>')
+@login_required
+def profile(user_id):
+    return render_template('profile.html', user_id=user_id)
+
+@app.route('/settings')
+@login_required
+def settings():
+    return render_template('settings.html')
+
 def start_websocket_client():
     """Start WebSocket client in background thread"""
     def run_client():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Store the loop reference in the client
+        leosac_client._loop = loop
         
         async def client_loop():
             while True:

@@ -5,36 +5,347 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Leosac Web GUI{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
             background-color: #f8f9fa;
         }
-        .navbar-brand {
-            font-weight: bold;
+        
+        /* Sidebar styles */
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
         }
+        
+        .sidebar-brand {
+            height: 4.375rem;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 800;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            letter-spacing: 0.1rem;
+            z-index: 1;
+        }
+        
+        .sidebar-brand .sidebar-brand-icon {
+            font-size: 2rem;
+        }
+        
+        .sidebar-brand .sidebar-brand-text {
+            display: inline;
+            margin: 0 0.5rem;
+        }
+        
+        .sidebar .nav-item {
+            position: relative;
+        }
+        
+        .sidebar .nav-item .nav-link {
+            display: block;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            width: 14rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+        
+        .sidebar .nav-item .nav-link:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar .nav-item .nav-link.active {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar .nav-item .nav-link i {
+            margin-right: 0.25rem;
+            width: 1rem;
+        }
+        
+        .sidebar-heading {
+            color: rgba(255, 255, 255, 0.4);
+            text-align: left;
+            padding: 0 1rem;
+            font-weight: 800;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            margin-top: 1rem;
+        }
+        
+        .sidebar-divider {
+            margin: 0 1rem 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Content wrapper */
+        #content-wrapper {
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
+        /* Top navigation */
+        .topbar {
+            height: 4.375rem;
+            background-color: #fff;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        
+        .topbar .navbar-search {
+            width: 20rem;
+        }
+        
+        .topbar .dropdown-list {
+            width: 20rem !important;
+        }
+        
+        /* Main content */
+        .container-fluid {
+            padding: 1.5rem;
+        }
+        
+        /* Flash messages */
         .flash-messages {
-            margin-top: 20px;
+            margin-top: 1rem;
         }
-        .main-content {
-            margin-top: 20px;
+        
+        /* Summary icons for dashboard */
+        .summary-icon {
+            width: 128px;
+            height: 128px;
+            background: #0070c0;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 0 auto;
+        }
+        
+        .summary-icon:hover {
+            background-color: #004D85;
+            border: 1px solid #0052a0;
+        }
+        
+        .logo-size-index {
+            width: 400px;
+            height: 106px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                transition: 0.3s;
+                z-index: 1000;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Leosac Web GUI</a>
-            {% if current_user.is_authenticated %}
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    Welcome, {{ current_user.username }}
-                </span>
-                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+    {% if current_user.is_authenticated %}
+    <div id="wrapper">
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-brand d-flex align-items-center justify-content-center">
+                <i class="fas fa-shield-alt sidebar-brand-icon"></i>
+                <div class="sidebar-brand-text mx-3">Leosac Web GUI</div>
             </div>
-            {% endif %}
+            
+            <hr class="sidebar-divider my-0">
+            
+            <!-- Navigation Items -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="fas fa-fw fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseOverview">
+                        <i class="fa fa-fw fa-chart-bar"></i>
+                        <span>Overview</span>
+                    </a>
+                    <div id="collapseOverview" class="collapse">
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            <h6 class="collapse-header">Overview:</h6>
+                            <a class="collapse-item" href="{{ url_for('system_overview') }}">System Overview</a>
+                            <a class="collapse-item" href="{{ url_for('access_overview') }}">Access Overview</a>
+                            <a class="collapse-item" href="{{ url_for('zone_overview') }}">Zone Overview</a>
+                        </div>
+                    </div>
+                </li>
+                
+                <hr class="sidebar-divider">
+                
+                <div class="sidebar-heading">Access</div>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('users_list') }}">
+                        <i class="fas fa-fw fa-user"></i>
+                        <span>Users</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('groups_list') }}">
+                        <i class="fas fa-fw fa-users"></i>
+                        <span>Groups</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('credentials_list') }}">
+                        <i class="fas fa-fw fa-id-badge"></i>
+                        <span>Credentials</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('schedules_list') }}">
+                        <i class="fas fa-fw fa-calendar"></i>
+                        <span>Schedules</span>
+                    </a>
+                </li>
+                
+                <hr class="sidebar-divider">
+                
+                <div class="sidebar-heading">Hardware</div>
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('zones_list') }}">
+                        <i class="fas fa-fw fa-building"></i>
+                        <span>Zones</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('doors_list') }}">
+                        <i class="fas fa-fw fa-door-open"></i>
+                        <span>Doors</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('access_points_list') }}">
+                        <i class="fas fa-fw fa-dungeon"></i>
+                        <span>Access Points</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('updates') }}">
+                        <i class="fas fa-fw fa-cubes"></i>
+                        <span>Hardware Update</span>
+                    </a>
+                </li>
+                
+                <hr class="sidebar-divider">
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auditlog') }}">
+                        <i class="fas fa-fw fa-bell"></i>
+                        <span>Alarms</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auditlog') }}">
+                        <i class="fas fa-fw fa-table"></i>
+                        <span>Audit Log</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <!-- Top Navigation -->
+            <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                <button class="btn btn-link rounded-circle mr-3" data-bs-toggle="collapse" data-bs-target="#sidebar">
+                    <i class="fa fa-bars"></i>
+                </button>
+                
+                <!-- Search Bar -->
+                <div class="navbar-search">
+                    <div class="input-group">
+                        <input class="form-control bg-light border-0 small" type="text" placeholder="Search for...">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary" type="button">
+                                <i class="fas fa-search fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Topbar Navbar -->
+                <ul class="navbar-nav ml-auto">
+                    <!-- Alerts Dropdown -->
+                    <li class="nav-item dropdown no-arrow mx-1">
+                        <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-bell fa-fw"></i>
+                            <span class="badge badge-danger badge-counter">0</span>
+                        </a>
+                        <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                            <h6 class="dropdown-header">Alarms</h6>
+                            <div class="dropdown-divider"></div>
+                        </div>
+                    </li>
+                    
+                    <!-- User Information -->
+                    <li class="nav-item dropdown no-arrow">
+                        <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user fa-fw"></i>
+                            <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ current_user.username }}</span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                            <a class="dropdown-item" href="{{ url_for('profile', user_id=current_user.id) }}">
+                                <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Profile
+                            </a>
+                            <a class="dropdown-item" href="{{ url_for('settings') }}">
+                                <i class="fas fa-cog fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Settings
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Logout
+                            </a>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+            
+            <!-- Main Content -->
+            <div id="content">
+                <!-- Page Heading -->
+                <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                    <h1 class="h3 mb-0 text-gray-800">{% block page_title %}{% endblock %}</h1>
+                </div>
+                
+                <!-- Flash Messages -->
+                <div class="flash-messages">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+                
+                <!-- Page Content -->
+                {% block content %}{% endblock %}
+            </div>
         </div>
-    </nav>
-
+    </div>
+    {% else %}
+    <!-- Login page layout -->
     <div class="container">
         <div class="flash-messages">
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -48,12 +359,13 @@
                 {% endif %}
             {% endwith %}
         </div>
-
+        
         <div class="main-content">
-            {% block content %}{% endblock %}
+            {% block login_content %}{% endblock %}
         </div>
     </div>
-
+    {% endif %}
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html> 

@@ -1,48 +1,72 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard - Leosac Web GUI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1>Welcome to Leosac Web GUI</h1>
-        <p class="lead">You are successfully logged in as <strong>{{ user.username }}</strong></p>
-    </div>
+<div>
+  <p>Welcome <strong>{{ user.username }}</strong> to Leosac Web GUI!</p>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Connection Status</h5>
+<div class="row center-image">
+    <div class="col-lg-3"></div>
+    <div class="col-lg-2 text-center">
+        <a href="{{ url_for('credentials_list') }}">
+            <div class="summary-icon">
+                <i class="fas fa-id-badge fa-3x text-white" style="margin-top: 40px;"></i>
             </div>
-            <div class="card-body">
-                <p><strong>Leosac Server:</strong> {{ config.LEOSAC_ADDR }}</p>
-                <p><strong>User ID:</strong> {{ user.id }}</p>
-                <p><strong>Username:</strong> {{ user.username }}</p>
-                {% if user.rank %}
-                <p><strong>Rank:</strong> {{ user.rank }}</p>
-                {% endif %}
-            </div>
-        </div>
+        </a>
+        <br /><br />
+        <p>
+            <a href="{{ url_for('credentials_list') }}" class="btn btn-primary">
+                Manage Access
+            </a>
+        </p>
     </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Quick Actions</h5>
+    <div class="col-lg-2 text-center">
+        <a href="{{ url_for('updates') }}">
+            <div class="summary-icon">
+                <i class="fas fa-cubes fa-3x text-white" style="margin-top: 40px;"></i>
             </div>
-            <div class="card-body">
-                <p>This is a basic Flask implementation of the Leosac Web GUI.</p>
-                <p>Future features will include:</p>
-                <ul>
-                    <li>Access point management</li>
-                    <li>User management</li>
-                    <li>Audit logs</li>
-                    <li>System configuration</li>
-                </ul>
-            </div>
-        </div>
+        </a>
+        <br /><br />
+        <p>
+            <a href="{{ url_for('updates') }}" class="btn btn-primary">
+                Apply Update
+            </a>
+        </p>
     </div>
+    <div class="col-lg-2 text-center">
+        <a href="{{ url_for('auditlog') }}">
+            <div class="summary-icon">
+                <i class="fas fa-bell fa-3x text-white" style="margin-top: 40px;"></i>
+            </div>
+        </a>
+        <br /><br />
+        <p>
+            <a href="{{ url_for('auditlog') }}" class="btn btn-primary">
+                Events
+            </a>
+        </p>
+    </div>
+    <div class="col-lg-3"></div>
 </div>
+
+<div class="space-bottom space-top center-image text-center">
+  <a href="http://www.leosac.com/" target="_blank" title="Leosac">
+    <img class="logo-size-index" src="https://via.placeholder.com/400x106/0070c0/ffffff?text=Leosac+Logo" alt="Leosac Logo" />
+  </a>
+</div>
+
+<style>
+.center-image {
+    text-align: center;
+}
+.space-bottom {
+    margin-bottom: 2rem;
+}
+.space-top {
+    margin-top: 2rem;
+}
+</style>
 {% endblock %} 
