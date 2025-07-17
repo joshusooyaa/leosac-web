@@ -6,13 +6,14 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Create New Schedule</h3>
+          <h3 class="card-title">Edit Schedule: {{ schedule.name }}</h3>
         </div>
         <div class="card-body">
           <form method="POST" id="scheduleForm">
             <div class="form-group">
               <label for="name">Schedule Name *</label>
               <input type="text" class="form-control" id="name" name="name" 
+                     value="{{ schedule.name }}"
                      placeholder="Enter schedule name (3-50 characters, no spaces)" 
                      pattern="[a-zA-Z0-9_.-]+" title="Only letters, numbers, underscores, hyphens, and periods are allowed"
                      required minlength="3" maxlength="50">
@@ -24,7 +25,7 @@
             <div class="form-group">
               <label for="description">Description</label>
               <textarea class="form-control" id="description" name="description" 
-                        rows="3" placeholder="Enter schedule description (optional)"></textarea>
+                        rows="3" placeholder="Enter schedule description (optional)">{{ schedule.description or '' }}</textarea>
               <small class="form-text text-muted">
                 Optional description for this schedule.
               </small>
@@ -38,7 +39,74 @@
               <p class="text-muted">Define when this schedule is active. Each timeframe can be enabled for specific days of the week.</p>
               
               <div id="timeframesContainer">
-                <!-- Timeframes will be added here dynamically -->
+                {% if schedule.timeframes %}
+                  {% for timeframe in schedule.timeframes %}
+                    <div class="timeframe-panel card mb-3" data-timeframe-id="{{ loop.index0 }}">
+                      <div class="card-header">
+                        <h6 class="mb-0">Timeframe {{ loop.index }}</h6>
+                        <button type="button" class="btn btn-sm btn-danger float-right remove-timeframe">
+                          <i class="fas fa-trash"></i> Remove
+                        </button>
+                      </div>
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <label>Days of Week</label>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][monday]" value="0" 
+                                     {% if 0 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Monday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][tuesday]" value="1"
+                                     {% if 1 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Tuesday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][wednesday]" value="2"
+                                     {% if 2 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Wednesday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][thursday]" value="3"
+                                     {% if 3 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Thursday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][friday]" value="4"
+                                     {% if 4 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Friday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][saturday]" value="5"
+                                     {% if 5 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Saturday</label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="timeframes[{{ loop.index0 }}][days][sunday]" value="6"
+                                     {% if 6 in timeframe.days %}checked{% endif %}>
+                              <label class="form-check-label">Sunday</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="start_time_{{ loop.index0 }}">Start Time</label>
+                              <input type="time" class="form-control" id="start_time_{{ loop.index0 }}" 
+                                     name="timeframes[{{ loop.index0 }}][start_time]" 
+                                     value="{{ timeframe.start_time }}" required>
+                            </div>
+                            <div class="form-group">
+                              <label for="end_time_{{ loop.index0 }}">End Time</label>
+                              <input type="time" class="form-control" id="end_time_{{ loop.index0 }}" 
+                                     name="timeframes[{{ loop.index0 }}][end_time]" 
+                                     value="{{ timeframe.end_time }}" required>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% endif %}
               </div>
               
               <button type="button" class="btn btn-primary" id="addTimeframe">
@@ -50,9 +118,9 @@
             
             <div class="form-group">
               <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Create Schedule
+                <i class="fas fa-save"></i> Update Schedule
               </button>
-              <a href="{{ url_for('schedules_list') }}" class="btn btn-secondary">
+              <a href="{{ url_for('schedule_view', schedule_id=schedule.id) }}" class="btn btn-secondary">
                 <i class="fas fa-times"></i> Cancel
               </a>
             </div>
@@ -64,7 +132,7 @@
 </div>
 
 <script>
-let timeframeCounter = 0;
+let timeframeCounter = {{ schedule.timeframes|length }};
 
 document.getElementById('addTimeframe').addEventListener('click', function() {
   const container = document.getElementById('timeframesContainer');

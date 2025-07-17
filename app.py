@@ -12,6 +12,7 @@ import time
 import logging
 import queue
 import traceback
+import re
 
 # Load environment variables
 load_dotenv()
@@ -1011,6 +1012,202 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error deleting credential {credential_id}: {e}")
       return False, {'error': str(e)}
 
+  def get_schedules(self):
+    """Get all schedules (thread-safe)"""
+    logger.info("=== GETTING SCHEDULES ===")
+    try:
+      result = self._run_in_websocket_thread('schedule.read', {'schedule_id': 0})
+      
+      if result and 'data' in result:
+        schedules = []
+        for schedule_data in result['data']:
+          schedule = {
+            'id': schedule_data.get('id'),
+            'name': schedule_data.get('attributes', {}).get('name'),
+            'description': schedule_data.get('attributes', {}).get('description'),
+            'timeframes': schedule_data.get('attributes', {}).get('timeframes', []),
+            'version': schedule_data.get('attributes', {}).get('version', 0)
+          }
+          schedules.append(schedule)
+        logger.info(f"✓ Retrieved {len(schedules)} schedules")
+        return schedules
+      logger.warning("✗ No schedules data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting schedules: {e}")
+      return []
+
+  def get_schedule(self, schedule_id):
+    """Get a specific schedule by ID (thread-safe)"""
+    logger.info(f"=== GETTING SCHEDULE: {schedule_id} ===")
+    try:
+      result = self._run_in_websocket_thread('schedule.read', {'schedule_id': int(schedule_id)})
+      
+      if result and 'data' in result:
+        schedule_data = result['data']
+        if isinstance(schedule_data, list):
+          if len(schedule_data) > 0:
+            schedule_data = schedule_data[0]
+          else:
+            logger.warning(f"✗ Schedule {schedule_id} not found (empty list)")
+            return None
+        
+        schedule = {
+          'id': schedule_data.get('id'),
+          'name': schedule_data.get('attributes', {}).get('name'),
+          'description': schedule_data.get('attributes', {}).get('description'),
+          'timeframes': schedule_data.get('attributes', {}).get('timeframes', []),
+          'mapping': [],
+          'version': schedule_data.get('attributes', {}).get('version', 0)
+        }
+        
+        # Extract mapping data from included section
+        if 'included' in result:
+          for included_item in result['included']:
+            if included_item.get('type') == 'schedule-mapping':
+              mapping = {
+                'id': included_item.get('id'),
+                'alias': included_item.get('attributes', {}).get('alias'),
+                'users': [],
+                'groups': [],
+                'credentials': [],
+                'doors': [],
+                'zones': []  # Add missing zones field
+              }
+              
+              # Extract user IDs from relationships
+              users_data = included_item.get('relationships', {}).get('users', {}).get('data', [])
+              if isinstance(users_data, dict):
+                users_data = [users_data]
+              mapping['users'] = [user.get('id') for user in users_data]
+              
+              # Extract group IDs from relationships
+              groups_data = included_item.get('relationships', {}).get('groups', {}).get('data', [])
+              if isinstance(groups_data, dict):
+                groups_data = [groups_data]
+              mapping['groups'] = [group.get('id') for group in groups_data]
+              
+              # Extract credential IDs from relationships
+              credentials_data = included_item.get('relationships', {}).get('credentials', {}).get('data', [])
+              if isinstance(credentials_data, dict):
+                credentials_data = [credentials_data]
+              mapping['credentials'] = [cred.get('id') for cred in credentials_data]
+              
+              # Extract door IDs from relationships
+              doors_data = included_item.get('relationships', {}).get('doors', {}).get('data', [])
+              if isinstance(doors_data, dict):
+                doors_data = [doors_data]
+              mapping['doors'] = [door.get('id') for door in doors_data]
+              
+              # Extract zone IDs from relationships
+              zones_data = included_item.get('relationships', {}).get('zones', {}).get('data', [])
+              if isinstance(zones_data, dict):
+                zones_data = [zones_data]
+              mapping['zones'] = [zone.get('id') for zone in zones_data]
+              
+              schedule['mapping'].append(mapping)
+        
+        logger.info(f"✓ Retrieved schedule {schedule_id}")
+        return schedule
+      logger.warning(f"✗ Schedule {schedule_id} not found")
+      return None
+    except Exception as e:
+      logger.error(f"✗ Error getting schedule {schedule_id}: {e}")
+      return None
+
+  def create_schedule(self, schedule_data):
+    """Create a new schedule (thread-safe)"""
+    logger.info(f"=== CREATING SCHEDULE ===")
+    logger.info(f"Schedule data: {schedule_data}")
+    try:
+      result = self._run_in_websocket_thread('schedule.create', {
+        'attributes': schedule_data
+      })
+      
+      logger.debug(f"Raw result from schedule.create: {result}")
+      
+      if result and 'data' in result:
+        schedule = {
+          'id': result['data'].get('id'),
+          'name': result['data'].get('attributes', {}).get('name'),
+          'description': result['data'].get('attributes', {}).get('description'),
+          'timeframes': result['data'].get('attributes', {}).get('timeframes', []),
+          'version': result['data'].get('attributes', {}).get('version', 0)
+        }
+        logger.info(f"✓ Schedule created successfully with ID: {schedule['id']}")
+        logger.info(f"Created schedule timeframes: {schedule['timeframes']}")
+        return True, schedule
+      else:
+        logger.error("✗ Schedule creation failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error creating schedule: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_schedule(self, schedule_id, schedule_data, mapping_data=None):
+    """Update a schedule (thread-safe)"""
+    logger.info(f"=== UPDATING SCHEDULE: {schedule_id} ===")
+    logger.info(f"Schedule data: {schedule_data}")
+    logger.info(f"Mapping data: {mapping_data}")
+    try:
+      params = {
+        'schedule_id': int(schedule_id),
+        'attributes': schedule_data
+      }
+      
+      # Add mapping data if provided
+      if mapping_data:
+        params['mapping'] = mapping_data
+      else:
+        # Always include mapping field (even if empty) like Ember does
+        params['mapping'] = []
+      
+      logger.debug(f"Sending schedule.update with params: {params}")
+      result = self._run_in_websocket_thread('schedule.update', params)
+      
+      logger.debug(f"Raw result from schedule.update: {result}")
+      
+      # For updates, the server returns the updated schedule data
+      if result and 'data' in result:
+        schedule = {
+          'id': result['data'].get('id'),
+          'name': result['data'].get('attributes', {}).get('name'),
+          'description': result['data'].get('attributes', {}).get('description'),
+          'timeframes': result['data'].get('attributes', {}).get('timeframes', []),
+          'version': result['data'].get('attributes', {}).get('version', 0)
+        }
+        logger.info(f"✓ Schedule {schedule_id} updated successfully")
+        logger.info(f"Updated schedule timeframes: {schedule['timeframes']}")
+        return True, schedule
+      else:
+        logger.error(f"✗ Schedule update failed: no data in response")
+        logger.error(f"Result: {result}")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error updating schedule {schedule_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def delete_schedule(self, schedule_id):
+    """Delete a schedule (thread-safe)"""
+    logger.info(f"=== DELETING SCHEDULE: {schedule_id} ===")
+    try:
+      result = self._run_in_websocket_thread('schedule.delete', {'schedule_id': int(schedule_id)})
+      
+      logger.debug(f"Raw result from schedule.delete: {result}")
+      
+      # For deletes, the server returns an empty response on success
+      if result is not None:
+        logger.info(f"✓ Schedule {schedule_id} deleted successfully")
+        return True, result
+      else:
+        logger.error(f"✗ Schedule deletion failed: result is None")
+        return False, {'error': 'Server returned no response'}
+    except Exception as e:
+      logger.error(f"✗ Error deleting schedule {schedule_id}: {e}")
+      return False, {'error': str(e)}
+
 # Global WebSocket client
 leosac_client = LeosacWebSocketService()
 
@@ -1537,14 +1734,359 @@ def credential_delete(credential_id):
 @app.route('/schedules')
 @login_required
 def schedules_list():
-    return render_template('schedules/list.html')
+    """List all schedules"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('index'))
 
-@app.route('/schedules/create')
+        # Get schedules from WebSocket
+        schedules = leosac_client.get_schedules()
+
+        return render_template('schedules/list.html', schedules=schedules)
+    except Exception as e:
+        logger.error(f"Error in schedules_list: {e}")
+        flash('Error loading schedules. Please try again.', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/schedules/create', methods=['GET', 'POST'])
 @login_required
 def schedules_create():
+    """Create a new schedule"""
+    if request.method == 'POST':
+        try:
+            # Check if WebSocket client is connected
+            auth_state = leosac_client.get_auth_state()
+            if not auth_state['connected']:
+                flash('WebSocket connection not available. Please try again.', 'error')
+                return redirect(url_for('schedules_list'))
+
+            # Get form data
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            
+            # Validate required fields
+            if not name:
+                flash('Schedule name is required.', 'error')
+                return render_template('schedules/create.html')
+            
+            if len(name) < 3:
+                flash('Schedule name must be at least 3 characters long.', 'error')
+                return render_template('schedules/create.html')
+            
+            if len(name) > 50:
+                flash('Schedule name must be no more than 50 characters long.', 'error')
+                return render_template('schedules/create.html')
+
+            # Validate character restrictions (matching server validation)
+            if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
+                flash('Schedule name can only contain letters, numbers, underscores (_), hyphens (-), and periods (.). No spaces or other characters are allowed.', 'error')
+                return render_template('schedules/create.html')
+
+            # Process timeframes from form data
+            timeframes = []
+            timeframe_counter = 0
+            
+            logger.info("=== PROCESSING TIMEFRAMES FROM FORM (CREATE) ===")
+            logger.info(f"Form data keys: {list(request.form.keys())}")
+            
+            # Get all timeframe data from the form
+            while f'timeframes[{timeframe_counter}][start_time]' in request.form:
+                start_time = request.form.get(f'timeframes[{timeframe_counter}][start_time]')
+                end_time = request.form.get(f'timeframes[{timeframe_counter}][end_time]')
+                
+                logger.info(f"Processing timeframe {timeframe_counter}: start_time={start_time}, end_time={end_time}")
+                
+                if start_time and end_time:
+                    # Get selected days for this timeframe
+                    selected_days = []
+                    for day_name, day_value in [
+                        ('monday', 0), ('tuesday', 1), ('wednesday', 2), 
+                        ('thursday', 3), ('friday', 4), ('saturday', 5), ('sunday', 6)
+                    ]:
+                        # Check if checkbox is checked (checkbox value is present in form data)
+                        if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
+                            selected_days.append(day_value)
+                            logger.info(f"  Day {day_name} (value {day_value}) selected")
+                    
+                    # Create a separate timeframe for each selected day (like Ember does)
+                    for day in selected_days:
+                        timeframe = {
+                            'id': len(timeframes),
+                            'start-time': start_time,  # Use hyphenated field name
+                            'end-time': end_time,      # Use hyphenated field name
+                            'day': day
+                        }
+                        timeframes.append(timeframe)
+                        logger.info(f"  Created timeframe: {timeframe}")
+                
+                timeframe_counter += 1
+
+            logger.info(f"Final timeframes array: {timeframes}")
+
+            # Create schedule data
+            schedule_data = {
+                'name': name,
+                'description': description,
+                'timeframes': timeframes
+            }
+
+            # Create schedule via WebSocket
+            success, result = leosac_client.create_schedule(schedule_data)
+
+            if success:
+                flash('Schedule created successfully!', 'success')
+                return redirect(url_for('schedule_view', schedule_id=result['id']))
+            else:
+                error_msg = result.get('error', 'Unknown error occurred')
+                flash(f'Failed to create schedule: {error_msg}', 'error')
+                return render_template('schedules/create.html')
+
+        except Exception as e:
+            logger.error(f"Error creating schedule: {e}")
+            flash('Error creating schedule. Please try again.', 'error')
+            return render_template('schedules/create.html')
+
     return render_template('schedules/create.html')
 
 # Hardware management routes
+@app.route('/schedules/<int:schedule_id>')
+@login_required
+def schedule_view(schedule_id):
+    """View a specific schedule"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('schedules_list'))
+
+        # Get schedule from WebSocket
+        schedule = leosac_client.get_schedule(schedule_id)
+
+        if schedule:
+            # Group timeframes for display
+            if schedule.get('timeframes'):
+                schedule['timeframes'] = group_timeframes_for_display(schedule['timeframes'])
+                logger.info(f"Grouped timeframes for display: {schedule['timeframes']}")
+            
+            return render_template('schedules/view.html', schedule=schedule)
+        else:
+            flash('Schedule not found.', 'error')
+            return redirect(url_for('schedules_list'))
+
+    except Exception as e:
+        logger.error(f"Error in schedule_view: {e}")
+        flash('Error loading schedule. Please try again.', 'error')
+        return redirect(url_for('schedules_list'))
+
+# Helper function to group timeframes by time for display
+def group_timeframes_for_display(timeframes):
+    """Group timeframes by start/end time for display in the UI"""
+    if not timeframes:
+        return []
+    
+    # Group timeframes by start and end time
+    grouped = {}
+    for tf in timeframes:
+        start_time = tf.get('start-time') or tf.get('start_time')
+        end_time = tf.get('end-time') or tf.get('end_time')
+        day = tf.get('day')
+        
+        if start_time and end_time:
+            key = f"{start_time}-{end_time}"
+            if key not in grouped:
+                grouped[key] = {
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'days': set()
+                }
+            grouped[key]['days'].add(day)
+    
+    # Convert to list format for template
+    result = []
+    for i, (key, data) in enumerate(grouped.items()):
+        timeframe = {
+            'id': i,
+            'start_time': data['start_time'],
+            'end_time': data['end_time'],
+            'days': data['days']
+        }
+        result.append(timeframe)
+    
+    return result
+
+@app.route('/schedules/<int:schedule_id>/edit', methods=['GET', 'POST'])
+@login_required
+def schedule_edit(schedule_id):
+    """Edit a schedule"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('schedules_list'))
+
+        # Get current schedule data
+        schedule = leosac_client.get_schedule(schedule_id)
+        if not schedule:
+            flash('Schedule not found.', 'error')
+            return redirect(url_for('schedules_list'))
+
+        # Group timeframes for display
+        if schedule.get('timeframes'):
+            schedule['timeframes'] = group_timeframes_for_display(schedule['timeframes'])
+            logger.info(f"Grouped timeframes for display: {schedule['timeframes']}")
+
+        if request.method == 'POST':
+            # Get form data
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            
+            # Validate required fields
+            if not name:
+                flash('Schedule name is required.', 'error')
+                return render_template('schedules/edit.html', schedule=schedule)
+            
+            if len(name) < 3:
+                flash('Schedule name must be at least 3 characters long.', 'error')
+                return render_template('schedules/edit.html', schedule=schedule)
+            
+            if len(name) > 50:
+                flash('Schedule name must be no more than 50 characters long.', 'error')
+                return render_template('schedules/edit.html', schedule=schedule)
+
+            # Validate character restrictions (matching server validation)
+            if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
+                flash('Schedule name can only contain letters, numbers, underscores (_), hyphens (-), and periods (.). No spaces or other characters are allowed.', 'error')
+                return render_template('schedules/edit.html', schedule=schedule)
+
+            # Process timeframes from form data - this is the key fix
+            timeframes = []
+            timeframe_counter = 0
+            
+            logger.info("=== PROCESSING TIMEFRAMES FROM FORM ===")
+            logger.info(f"Form data keys: {list(request.form.keys())}")
+            
+            # Get all timeframe data from the form
+            while f'timeframes[{timeframe_counter}][start_time]' in request.form:
+                start_time = request.form.get(f'timeframes[{timeframe_counter}][start_time]')
+                end_time = request.form.get(f'timeframes[{timeframe_counter}][end_time]')
+                
+                logger.info(f"Processing timeframe {timeframe_counter}: start_time={start_time}, end_time={end_time}")
+                
+                if start_time and end_time:
+                    # Get selected days for this timeframe
+                    selected_days = []
+                    for day_name, day_value in [
+                        ('monday', 0), ('tuesday', 1), ('wednesday', 2), 
+                        ('thursday', 3), ('friday', 4), ('saturday', 5), ('sunday', 6)
+                    ]:
+                        # Check if checkbox is checked (checkbox value is present in form data)
+                        if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
+                            selected_days.append(day_value)
+                            logger.info(f"  Day {day_name} (value {day_value}) selected")
+                    
+                    # Create a separate timeframe for each selected day (like Ember does)
+                    for day in selected_days:
+                        timeframe = {
+                            'id': len(timeframes),
+                            'start-time': start_time,  # Use hyphenated field name
+                            'end-time': end_time,      # Use hyphenated field name
+                            'day': day
+                        }
+                        timeframes.append(timeframe)
+                        logger.info(f"  Created timeframe: {timeframe}")
+                
+                timeframe_counter += 1
+
+            logger.info(f"Final timeframes array: {timeframes}")
+
+            # Update schedule data
+            schedule_data = {
+                'name': name,
+                'description': description,
+                'timeframes': timeframes
+            }
+
+            # Get existing mappings to preserve them (like Ember does)
+            existing_mappings = []
+            if schedule.get('mapping'):
+                for mapping in schedule['mapping']:
+                    # Convert IDs to integers like Ember does
+                    # Include ALL required fields that the server expects
+                    mapping_data = {
+                        'id': int(mapping['id']) if mapping['id'] else None,
+                        'alias': mapping['alias'],
+                        'users': [int(user_id) for user_id in mapping['users'] if user_id],
+                        'groups': [int(group_id) for group_id in mapping['groups'] if group_id],
+                        'credentials': [int(cred_id) for cred_id in mapping['credentials'] if cred_id],
+                        'doors': [int(door_id) for door_id in mapping['doors'] if door_id],
+                        'zones': [int(zone_id) for zone_id in mapping.get('zones', []) if zone_id]  # Add missing zones field
+                    }
+                    existing_mappings.append(mapping_data)
+            else:
+                # If no existing mappings, provide empty arrays for all required fields
+                logger.info("No existing mappings found, providing empty mapping with all required fields")
+                existing_mappings = [{
+                    'alias': '',
+                    'users': [],
+                    'groups': [],
+                    'credentials': [],
+                    'doors': [],
+                    'zones': []
+                }]
+
+            logger.debug(f"Updating schedule {schedule_id} with data: {schedule_data}")
+            logger.debug(f"Existing mappings: {existing_mappings}")
+
+            # Update schedule via WebSocket (include mappings like Ember does)
+            success, result = leosac_client.update_schedule(schedule_id, schedule_data, existing_mappings)
+
+            if success:
+                flash('Schedule updated successfully!', 'success')
+                return redirect(url_for('schedule_view', schedule_id=schedule_id))
+            else:
+                error_msg = result.get('error', 'Unknown error occurred')
+                flash(f'Failed to update schedule: {error_msg}', 'error')
+                return render_template('schedules/edit.html', schedule=schedule)
+
+        return render_template('schedules/edit.html', schedule=schedule)
+
+    except Exception as e:
+        logger.error(f"Error in schedule_edit: {e}")
+        flash('Error editing schedule. Please try again.', 'error')
+        return redirect(url_for('schedules_list'))
+
+@app.route('/schedules/<int:schedule_id>/delete', methods=['POST'])
+@login_required
+def schedule_delete(schedule_id):
+    """Delete a schedule"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('schedules_list'))
+
+        # Delete schedule via WebSocket
+        success, result = leosac_client.delete_schedule(schedule_id)
+
+        if success:
+            flash('Schedule deleted successfully!', 'success')
+        else:
+            error_msg = result.get('error', 'Unknown error occurred')
+            flash(f'Failed to delete schedule: {error_msg}', 'error')
+
+        return redirect(url_for('schedules_list'))
+
+    except Exception as e:
+        logger.error(f"Error deleting schedule: {e}")
+        flash('Error deleting schedule. Please try again.', 'error')
+        return redirect(url_for('schedules_list'))
+
 @app.route('/zones')
 @login_required
 def zones_list():
