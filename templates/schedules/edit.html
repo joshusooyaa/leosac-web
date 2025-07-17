@@ -115,6 +115,90 @@
             </div>
             
             <hr>
+
+            <!-- Mappings Section -->
+            <div class="form-group">
+              <h5>Mappings</h5>
+              <p class="text-muted">Define which users, groups, credentials, and doors this schedule applies to. You can add multiple mappings with different combinations.</p>
+              <div id="mappingsContainer">
+                {% if schedule.mapping %}
+                  {% for mapping in schedule.mapping %}
+                    <div class="mapping-panel card mb-3" data-mapping-id="{{ loop.index0 }}">
+                      <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                          <label>Alias:</label>
+                          <input type="text" class="form-control d-inline-block w-auto" name="mappings[{{ loop.index0 }}][alias]" value="{{ mapping.alias }}" required>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger remove-mapping"><i class="fas fa-trash"></i> Remove</button>
+                      </div>
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <label>Users</label>
+                            <div class="form-group">
+                              {% for user in users %}
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][users][]" value="{{ user.id }}" id="mapping-{{ loop.index0 }}-user-{{ user.id }}" {% if user.id in mapping.users %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-user-{{ user.id }}">
+                                    {{ user.username }} ({{ user.firstname }} {{ user.lastname }})
+                                  </label>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <label>Groups</label>
+                            <div class="form-group">
+                              {% for group in groups %}
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][groups][]" value="{{ group.id }}" id="mapping-{{ loop.index0 }}-group-{{ group.id }}" {% if group.id in mapping.groups %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-group-{{ group.id }}">
+                                    {{ group.name }}
+                                  </label>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row mt-3">
+                          <div class="col-md-6">
+                            <label>Credentials</label>
+                            <div class="form-group">
+                              {% for cred in credentials %}
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][credentials][]" value="{{ cred.id }}" id="mapping-{{ loop.index0 }}-cred-{{ cred.id }}" {% if cred.id in mapping.credentials %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-cred-{{ cred.id }}">
+                                    {{ cred.alias }} ({{ cred.type }})
+                                  </label>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <label>Doors</label>
+                            <div class="form-group">
+                              {% for door in doors %}
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][doors][]" value="{{ door.id }}" id="mapping-{{ loop.index0 }}-door-{{ door.id }}" {% if door.id in mapping.doors %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-door-{{ door.id }}">
+                                    {{ door.name }}
+                                  </label>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              </div>
+              <button type="button" class="btn btn-primary" id="addMapping">
+                <i class="fas fa-plus"></i> Add Mapping
+              </button>
+            </div>
+            
+            <hr>
             
             <div class="form-group">
               <button type="submit" class="btn btn-primary">
@@ -206,6 +290,86 @@ document.addEventListener('click', function(e) {
     const timeframePanel = e.target.closest('.timeframe-panel');
     if (timeframePanel) {
       timeframePanel.remove();
+    }
+  }
+});
+
+let users = {{ users|tojson|safe }};
+let groups = {{ groups|tojson|safe }};
+let credentials = {{ credentials|tojson|safe }};
+let doors = {{ doors|tojson|safe }};
+
+let mappingCounter = {{ schedule.mapping|length if schedule.mapping else 0 }};
+
+document.getElementById('addMapping').addEventListener('click', function() {
+  const container = document.getElementById('mappingsContainer');
+  const newMapping = document.createElement('div');
+  newMapping.className = 'mapping-panel card mb-3';
+  newMapping.setAttribute('data-mapping-id', mappingCounter);
+  let usersHtml = users.map(user => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="mappings[${mappingCounter}][users][]" value="${user.id}" id="mapping-${mappingCounter}-user-${user.id}">
+      <label class="form-check-label" for="mapping-${mappingCounter}-user-${user.id}">${user.username} (${user.firstname} ${user.lastname})</label>
+    </div>
+  `).join('');
+  let groupsHtml = groups.map(group => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="mappings[${mappingCounter}][groups][]" value="${group.id}" id="mapping-${mappingCounter}-group-${group.id}">
+      <label class="form-check-label" for="mapping-${mappingCounter}-group-${group.id}">${group.name}</label>
+    </div>
+  `).join('');
+  let credentialsHtml = credentials.map(cred => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="mappings[${mappingCounter}][credentials][]" value="${cred.id}" id="mapping-${mappingCounter}-cred-${cred.id}">
+      <label class="form-check-label" for="mapping-${mappingCounter}-cred-${cred.id}">${cred.alias} (${cred.type})</label>
+    </div>
+  `).join('');
+  let doorsHtml = doors.map(door => `
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="mappings[${mappingCounter}][doors][]" value="${door.id}" id="mapping-${mappingCounter}-door-${door.id}">
+      <label class="form-check-label" for="mapping-${mappingCounter}-door-${door.id}">${door.name}</label>
+    </div>
+  `).join('');
+  newMapping.innerHTML = `
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <label>Alias:</label>
+        <input type="text" class="form-control d-inline-block w-auto" name="mappings[${mappingCounter}][alias]" required>
+      </div>
+      <button type="button" class="btn btn-sm btn-danger remove-mapping"><i class="fas fa-trash"></i> Remove</button>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <label>Users</label>
+          <div class="form-group">${usersHtml}</div>
+        </div>
+        <div class="col-md-6">
+          <label>Groups</label>
+          <div class="form-group">${groupsHtml}</div>
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <label>Credentials</label>
+          <div class="form-group">${credentialsHtml}</div>
+        </div>
+        <div class="col-md-6">
+          <label>Doors</label>
+          <div class="form-group">${doorsHtml}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(newMapping);
+  mappingCounter++;
+});
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('remove-mapping') || e.target.closest('.remove-mapping')) {
+    const mappingPanel = e.target.closest('.mapping-panel');
+    if (mappingPanel) {
+      mappingPanel.remove();
     }
   }
 });

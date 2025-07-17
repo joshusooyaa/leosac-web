@@ -1208,6 +1208,53 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error deleting schedule {schedule_id}: {e}")
       return False, {'error': str(e)}
 
+  def get_groups(self):
+    """Get all groups (thread-safe)"""
+    logger.info("=== GETTING GROUPS ===")
+    try:
+      result = self._run_in_websocket_thread('group.read', {'group_id': 0})
+      if result and 'data' in result:
+        groups = []
+        for group_data in result['data']:
+          group = {
+            'id': group_data.get('id'),
+            'name': group_data.get('attributes', {}).get('name'),
+            'description': group_data.get('attributes', {}).get('description'),
+            'version': group_data.get('attributes', {}).get('version', 0)
+          }
+          groups.append(group)
+        logger.info(f"✓ Retrieved {len(groups)} groups")
+        return groups
+      logger.warning("✗ No groups data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting groups: {e}")
+      return []
+
+  def get_doors(self):
+    """Get all doors (thread-safe)"""
+    logger.info("=== GETTING DOORS ===")
+    try:
+      result = self._run_in_websocket_thread('door.read', {'door_id': 0})
+      if result and 'data' in result:
+        doors = []
+        for door_data in result['data']:
+          door = {
+            'id': door_data.get('id'),
+            'name': door_data.get('attributes', {}).get('name'),
+            'description': door_data.get('attributes', {}).get('description'),
+            'zone': door_data.get('relationships', {}).get('zone', {}).get('data', {}).get('id'),
+            'version': door_data.get('attributes', {}).get('version', 0)
+          }
+          doors.append(door)
+        logger.info(f"✓ Retrieved {len(doors)} doors")
+        return doors
+      logger.warning("✗ No doors data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting doors: {e}")
+      return []
+
 # Global WebSocket client
 leosac_client = LeosacWebSocketService()
 
@@ -1935,6 +1982,12 @@ def schedule_edit(schedule_id):
             flash('Schedule not found.', 'error')
             return redirect(url_for('schedules_list'))
 
+        # Fetch all users, groups, credentials, and doors for mapping UI
+        users = leosac_client.get_users()
+        groups = leosac_client.get_groups()
+        credentials = leosac_client.get_credentials()
+        doors = leosac_client.get_doors()
+
         # Group timeframes for display
         if schedule.get('timeframes'):
             schedule['timeframes'] = group_timeframes_for_display(schedule['timeframes'])
@@ -1944,65 +1997,112 @@ def schedule_edit(schedule_id):
             # Get form data
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
-            
+
             # Validate required fields
             if not name:
                 flash('Schedule name is required.', 'error')
-                return render_template('schedules/edit.html', schedule=schedule)
-            
+                return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
             if len(name) < 3:
                 flash('Schedule name must be at least 3 characters long.', 'error')
-                return render_template('schedules/edit.html', schedule=schedule)
-            
+                return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
             if len(name) > 50:
                 flash('Schedule name must be no more than 50 characters long.', 'error')
-                return render_template('schedules/edit.html', schedule=schedule)
-
-            # Validate character restrictions (matching server validation)
+                return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
             if not re.match(r'^[a-zA-Z0-9_.-]+$', name):
                 flash('Schedule name can only contain letters, numbers, underscores (_), hyphens (-), and periods (.). No spaces or other characters are allowed.', 'error')
-                return render_template('schedules/edit.html', schedule=schedule)
+                return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
 
-            # Process timeframes from form data - this is the key fix
+            # Process timeframes from form data
             timeframes = []
             timeframe_counter = 0
-            
             logger.info("=== PROCESSING TIMEFRAMES FROM FORM ===")
             logger.info(f"Form data keys: {list(request.form.keys())}")
-            
-            # Get all timeframe data from the form
             while f'timeframes[{timeframe_counter}][start_time]' in request.form:
                 start_time = request.form.get(f'timeframes[{timeframe_counter}][start_time]')
                 end_time = request.form.get(f'timeframes[{timeframe_counter}][end_time]')
-                
                 logger.info(f"Processing timeframe {timeframe_counter}: start_time={start_time}, end_time={end_time}")
-                
                 if start_time and end_time:
-                    # Get selected days for this timeframe
                     selected_days = []
                     for day_name, day_value in [
                         ('monday', 0), ('tuesday', 1), ('wednesday', 2), 
                         ('thursday', 3), ('friday', 4), ('saturday', 5), ('sunday', 6)
                     ]:
-                        # Check if checkbox is checked (checkbox value is present in form data)
                         if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
                             selected_days.append(day_value)
                             logger.info(f"  Day {day_name} (value {day_value}) selected")
-                    
-                    # Create a separate timeframe for each selected day (like Ember does)
                     for day in selected_days:
                         timeframe = {
                             'id': len(timeframes),
-                            'start-time': start_time,  # Use hyphenated field name
-                            'end-time': end_time,      # Use hyphenated field name
+                            'start-time': start_time,
+                            'end-time': end_time,
                             'day': day
                         }
                         timeframes.append(timeframe)
                         logger.info(f"  Created timeframe: {timeframe}")
-                
                 timeframe_counter += 1
-
             logger.info(f"Final timeframes array: {timeframes}")
+
+            # Process mappings from form data
+            mapping_data = []
+
+            # Find all mapping indices by looking for any mapping fields
+            mapping_indices = set()
+            import re as _re
+            for key in request.form.keys():
+              if key.startswith('mappings['):
+                m = _re.match(r'mappings\[(\d+)\]', key)
+                if m:
+                  mapping_indices.add(int(m.group(1)))
+
+            # DEBUG: Log all mapping-related form data
+            logger.info(f"Found mapping indices: {sorted(mapping_indices)}")
+            logger.info("==== DETAILED MAPPING FORM DATA ====")
+            for key in sorted(request.form.keys()):
+              if key.startswith('mappings['):
+                values = request.form.getlist(key)
+                logger.info(f"MAPPING FORM: {key} => {values}")
+            logger.info("==== END MAPPING FORM DATA ====")
+
+            # Aggregate all users, groups, credentials, doors into a single mapping
+            all_users = []
+            all_groups = []
+            all_credentials = []
+            all_doors = []
+            alias = None
+
+            for idx in sorted(mapping_indices):
+              this_alias = request.form.get(f'mappings[{idx}][alias]', '').strip()
+              if this_alias and not alias:
+                alias = this_alias  # Use the first alias found
+              users_selected = request.form.getlist(f'mappings[{idx}][users][]')
+              groups_selected = request.form.getlist(f'mappings[{idx}][groups][]')
+              credentials_selected = request.form.getlist(f'mappings[{idx}][credentials][]')
+              doors_selected = request.form.getlist(f'mappings[{idx}][doors][]')
+              all_users.extend([int(uid) for uid in users_selected if uid and uid.strip()])
+              all_groups.extend([int(gid) for gid in groups_selected if gid and gid.strip()])
+              all_credentials.extend([int(cid) for cid in credentials_selected if cid and cid.strip()])
+              all_doors.extend([int(did) for did in doors_selected if did and did.strip()])
+
+            # Remove duplicates
+            all_users = list(set(all_users))
+            all_groups = list(set(all_groups))
+            all_credentials = list(set(all_credentials))
+            all_doors = list(set(all_doors))
+
+            mapping_data = []
+            if alias and (all_users or all_groups or all_credentials or all_doors):
+              mapping = {
+                'alias': alias,
+                'users': all_users,
+                'groups': all_groups,
+                'credentials': all_credentials,
+                'doors': all_doors,
+                'zones': []  # Not handled in UI yet
+              }
+              mapping_data.append(mapping)
+              logger.info(f"Aggregated mapping: {mapping}")
+            else:
+              logger.info(f"No valid mapping to add. Alias: {alias}, users: {all_users}, groups: {all_groups}, credentials: {all_credentials}, doors: {all_doors}")
 
             # Update schedule data
             schedule_data = {
@@ -2010,50 +2110,18 @@ def schedule_edit(schedule_id):
                 'description': description,
                 'timeframes': timeframes
             }
-
-            # Get existing mappings to preserve them (like Ember does)
-            existing_mappings = []
-            if schedule.get('mapping'):
-                for mapping in schedule['mapping']:
-                    # Convert IDs to integers like Ember does
-                    # Include ALL required fields that the server expects
-                    mapping_data = {
-                        'id': int(mapping['id']) if mapping['id'] else None,
-                        'alias': mapping['alias'],
-                        'users': [int(user_id) for user_id in mapping['users'] if user_id],
-                        'groups': [int(group_id) for group_id in mapping['groups'] if group_id],
-                        'credentials': [int(cred_id) for cred_id in mapping['credentials'] if cred_id],
-                        'doors': [int(door_id) for door_id in mapping['doors'] if door_id],
-                        'zones': [int(zone_id) for zone_id in mapping.get('zones', []) if zone_id]  # Add missing zones field
-                    }
-                    existing_mappings.append(mapping_data)
-            else:
-                # If no existing mappings, provide empty arrays for all required fields
-                logger.info("No existing mappings found, providing empty mapping with all required fields")
-                existing_mappings = [{
-                    'alias': '',
-                    'users': [],
-                    'groups': [],
-                    'credentials': [],
-                    'doors': [],
-                    'zones': []
-                }]
-
             logger.debug(f"Updating schedule {schedule_id} with data: {schedule_data}")
-            logger.debug(f"Existing mappings: {existing_mappings}")
-
-            # Update schedule via WebSocket (include mappings like Ember does)
-            success, result = leosac_client.update_schedule(schedule_id, schedule_data, existing_mappings)
-
+            logger.debug(f"Mappings: {mapping_data}")
+            success, result = leosac_client.update_schedule(schedule_id, schedule_data, mapping_data)
             if success:
                 flash('Schedule updated successfully!', 'success')
                 return redirect(url_for('schedule_view', schedule_id=schedule_id))
             else:
                 error_msg = result.get('error', 'Unknown error occurred')
                 flash(f'Failed to update schedule: {error_msg}', 'error')
-                return render_template('schedules/edit.html', schedule=schedule)
+                return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
 
-        return render_template('schedules/edit.html', schedule=schedule)
+        return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
 
     except Exception as e:
         logger.error(f"Error in schedule_edit: {e}")
