@@ -10,32 +10,108 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Door List</h5>
-                    <a href="{{ url_for('doors_create') }}" class="btn btn-primary">
+                    <a href="{{ url_for('doors.doors_create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Door
                     </a>
                 </div>
                 <div class="card-body">
+                    {% if doors %}
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
-                                    <th>Zone</th>
-                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Access Point</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for door in doors %}
                                 <tr>
-                                    <td colspan="5" class="text-center">Door list will be implemented here</td>
+                                    <td>{{ door.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('doors.door_detail', door_id=door.id) }}">
+                                            {{ door.attributes.alias }}
+                                        </a>
+                                    </td>
+                                    <td>{{ door.attributes.description or 'No description' }}</td>
+                                    <td>
+                                        {% if door.attributes.access_point_id %}
+                                            <span class="badge badge-info">Access Point {{ door.attributes.access_point_id }}</span>
+                                        {% else %}
+                                            <span class="badge badge-secondary">No Access Point</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('doors.door_detail', door_id=door.id) }}" 
+                                               class="btn btn-sm btn-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('doors.door_edit', door_id=door.id) }}" 
+                                               class="btn btn-sm btn-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="confirmDelete({{ door.id }}, '{{ door.attributes.alias }}')" 
+                                                    title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-door-open fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No doors found</h5>
+                        <p class="text-muted">Create your first door to get started.</p>
+                        <a href="{{ url_for('doors.doors_create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add First Door
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the door "<span id="doorName"></span>"?
+                <br><br>
+                <strong>Warning:</strong> This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Door</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(doorId, doorName) {
+    document.getElementById('doorName').textContent = doorName;
+    document.getElementById('deleteForm').action = "{{ url_for('doors.door_delete', door_id=0) }}".replace('0', doorId);
+    $('#deleteModal').modal('show');
+}
+</script>
 {% endblock %} 

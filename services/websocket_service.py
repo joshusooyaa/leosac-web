@@ -368,6 +368,7 @@ class LeosacWebSocketService:
     with self._lock:
       state = {
         'connected': self.connected,
+        'authenticated': bool(self.auth_token and self.user_info),
         'auth_token': self.auth_token,
         'user_info': self.user_info
       }
@@ -1523,5 +1524,232 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error unmapping schedule {schedule_id} from group {group_id}: {e}")
       logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
+
+  # Door-related methods
+  def get_doors(self):
+    """Get all doors (thread-safe)"""
+    logger.info("=== GETTING DOORS ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for doors: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return []
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return []
+      
+      # Send door list request
+      logger.debug("Sending door.read request with door_id=0")
+      result = self._run_in_websocket_thread('door.read', {'door_id': 0})
+      
+      logger.debug(f"Door read result: {result}")
+      
+      if result and 'data' in result:
+        doors_data = result.get('data', [])
+        logger.info(f"✓ Retrieved {len(doors_data)} doors")
+        logger.debug(f"Raw doors data: {doors_data}")
+        return doors_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get doors: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return []
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting doors: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return []
+
+  def get_door(self, door_id):
+    """Get a specific door by ID (thread-safe)"""
+    logger.info(f"=== GETTING DOOR {door_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for door {door_id}: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return None
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return None
+      
+      # Send door read request
+      logger.debug(f"Sending door.read request with door_id={door_id}")
+      result = self._run_in_websocket_thread('door.read', {'door_id': door_id})
+      
+      logger.debug(f"Door {door_id} read result: {result}")
+      
+      if result and 'data' in result:
+        door_data = result.get('data')
+        if isinstance(door_data, list) and len(door_data) > 0:
+          door_data = door_data[0]
+        elif not door_data:
+          logger.warning(f"✗ Door {door_id} not found (empty data)")
+          return None
+        
+        logger.info(f"✓ Retrieved door {door_id}")
+        logger.debug(f"Raw door data: {door_data}")
+        return door_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get door {door_id}: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return None
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting door {door_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return None
+
+  def create_door(self, door_data):
+    """Create a new door (thread-safe)"""
+    logger.info("=== CREATING DOOR ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare door attributes
+      attributes = {
+        'alias': door_data.get('alias', ''),
+        'description': door_data.get('description', '')
+      }
+      
+      # Add access point if specified
+      if door_data.get('access_point_id'):
+        attributes['access_point_id'] = door_data['access_point_id']
+      
+      # Send door create request
+      result = self._run_in_websocket_thread('door.create', {'attributes': attributes})
+      
+      if result and 'data' in result:
+        logger.info("✓ Door created successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to create door: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error creating door: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_door(self, door_id, door_data):
+    """Update an existing door (thread-safe)"""
+    logger.info(f"=== UPDATING DOOR {door_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare door attributes
+      attributes = {}
+      if 'alias' in door_data:
+        attributes['alias'] = door_data['alias']
+      if 'description' in door_data:
+        attributes['description'] = door_data['description']
+      if 'access_point_id' in door_data:
+        attributes['access_point_id'] = door_data['access_point_id']
+      
+      # Send door update request
+      result = self._run_in_websocket_thread('door.update', {
+        'door_id': door_id,
+        'attributes': attributes
+      })
+      
+      if result and 'data' in result:
+        logger.info(f"✓ Door {door_id} updated successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to update door {door_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error updating door {door_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def delete_door(self, door_id):
+    """Delete a door (thread-safe)"""
+    logger.info(f"=== DELETING DOOR {door_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Send door delete request
+      result = self._run_in_websocket_thread('door.delete', {'door_id': door_id})
+      
+      if result is not None:  # Delete operations typically return None on success
+        logger.info(f"✓ Door {door_id} deleted successfully")
+        return True, result
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to delete door {door_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error deleting door {door_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def get_access_points(self):
+    """Get all access points for door assignment (thread-safe)"""
+    logger.info("=== GETTING ACCESS POINTS ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for access points: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return []
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return []
+      
+      # Send access point list request
+      logger.debug("Sending access_point.read request with access_point_id=0")
+      result = self._run_in_websocket_thread('access_point.read', {'access_point_id': 0})
+      
+      logger.debug(f"Access points read result: {result}")
+      
+      if result and 'data' in result:
+        access_points_data = result.get('data', [])
+        logger.info(f"✓ Retrieved {len(access_points_data)} access points")
+        logger.debug(f"Raw access points data: {access_points_data}")
+        return access_points_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get access points: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return []
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting access points: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return []
 
 leosac_client = LeosacWebSocketService()
