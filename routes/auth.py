@@ -4,13 +4,15 @@ Authentication routes for Flask application.
 import logging
 import traceback
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required, current_user, login_manager
 from models.user import LeosacUser
 from services.websocket_service import leosac_client
 
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
+
+# Remove the @login_manager.user_loader and load_user function from this file
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -20,7 +22,7 @@ def login():
     
     if current_user.is_authenticated:
         logger.info("User already authenticated, redirecting to index")
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -79,7 +81,7 @@ def login():
                     
                     flash(f'Welcome {username}!', 'success')
                     logger.info("About to redirect to index...")
-                    return redirect(url_for('main.index'))
+                    return redirect(url_for('index'))
                 except Exception as e:
                     logger.error(f"Exception in login success block: {e}")
                     logger.error(f"Login success traceback: {traceback.format_exc()}")

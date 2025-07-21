@@ -11,7 +11,7 @@
         <div class="card-header">
           <h3 class="card-title">Schedules</h3>
           <div class="card-tools">
-            <a href="{{ url_for('schedules_create') }}" class="btn btn-primary">
+            <a href="{{ url_for('schedules.schedules_create') }}" class="btn btn-primary">
               <i class="fas fa-plus"></i> Create Schedule
             </a>
           </div>
@@ -33,10 +33,10 @@
                   {% for schedule in schedules %}
                     <tr>
                       <td>
-                        <a href="{{ url_for('schedule_view', schedule_id=schedule.id) }}">{{ schedule.id }}</a>
+                        <a href="{{ url_for('schedules.schedule_view', schedule_id=schedule.id) }}">{{ schedule.id }}</a>
                       </td>
                       <td>
-                        <a href="{{ url_for('schedule_view', schedule_id=schedule.id) }}">{{ schedule.name }}</a>
+                        <a href="{{ url_for('schedules.schedule_view', schedule_id=schedule.id) }}">{{ schedule.name }}</a>
                       </td>
                       <td>{{ schedule.description or 'No description' }}</td>
                       <td>
@@ -48,11 +48,11 @@
                       </td>
                       <td>
                         <div class="btn-group" role="group">
-                          <a href="{{ url_for('schedule_view', schedule_id=schedule.id) }}" 
+                          <a href="{{ url_for('schedules.schedule_view', schedule_id=schedule.id) }}" 
                              class="btn btn-sm btn-info">
                             <i class="fas fa-eye"></i> View
                           </a>
-                          <a href="{{ url_for('schedule_edit', schedule_id=schedule.id) }}" 
+                          <a href="{{ url_for('schedules.schedule_edit', schedule_id=schedule.id) }}" 
                              class="btn btn-sm btn-warning">
                             <i class="fas fa-edit"></i> Edit
                           </a>
@@ -70,7 +70,7 @@
           {% else %}
             <div class="alert alert-info">
               <i class="fas fa-info-circle"></i> No schedules found. 
-              <a href="{{ url_for('schedules_create') }}">Create your first schedule</a>.
+              <a href="{{ url_for('schedules.schedules_create') }}">Create your first schedule</a>.
             </div>
           {% endif %}
         </div>

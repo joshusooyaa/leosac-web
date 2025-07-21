@@ -265,7 +265,7 @@
                 <div class="sidebar-heading">Access</div>
                 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('users_list') }}">
+                    <a class="nav-link" href="{{ url_for('users.users_list') }}">
                         <i class="fas fa-fw fa-user"></i>
                         <span>Users</span>
                     </a>
@@ -277,13 +277,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('credentials_list') }}">
+                    <a class="nav-link" href="{{ url_for('credentials.credentials_list') }}">
                         <i class="fas fa-fw fa-id-badge"></i>
                         <span>Credentials</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('schedules_list') }}">
+                    <a class="nav-link" href="{{ url_for('schedules.schedules_list') }}">
                         <i class="fas fa-fw fa-calendar"></i>
                         <span>Schedules</span>
                     </a>
@@ -376,7 +376,7 @@
                             <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ current_user.username }}</span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
-                            <a class="dropdown-item" href="{{ url_for('profile', user_id=current_user.id) }}">
+                            <a class="dropdown-item" href="{{ url_for('users.profile', user_id=current_user.id) }}">
                                 <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                 Profile
                             </a>

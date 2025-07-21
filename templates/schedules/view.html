@@ -8,10 +8,10 @@
         <div class="card-header">
           <h3 class="card-title">Schedule: {{ schedule.name }}</h3>
           <div class="card-tools">
-            <a href="{{ url_for('schedule_edit', schedule_id=schedule.id) }}" class="btn btn-warning">
+            <a href="{{ url_for('schedules.schedule_edit', schedule_id=schedule.id) }}" class="btn btn-warning">
               <i class="fas fa-edit"></i> Edit
             </a>
-            <a href="{{ url_for('schedules_list') }}" class="btn btn-secondary">
+            <a href="{{ url_for('schedules.schedules_list') }}" class="btn btn-secondary">
               <i class="fas fa-arrow-left"></i> Back to List
             </a>
           </div>
@@ -78,7 +78,7 @@
                 <div class="alert alert-warning">
                   <i class="fas fa-exclamation-triangle"></i>
                   <strong>No timeframes defined.</strong> This schedule has no timeframes, which means it will have no effect.
-                  <a href="{{ url_for('schedule_edit', schedule_id=schedule.id) }}">Add timeframes</a> to make this schedule functional.
+                  <a href="{{ url_for('schedules.schedule_edit', schedule_id=schedule.id) }}">Add timeframes</a> to make this schedule functional.
                 </div>
               {% endif %}
             </div>
