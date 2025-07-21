@@ -11,6 +11,7 @@ import time
 import logging
 import queue
 import traceback
+from datetime import datetime
 from config.settings import WEBSOCKET_URL
 from utils.rank_converter import convert_rank_int_to_string, convert_rank_string_to_int
 
@@ -518,30 +519,86 @@ class LeosacWebSocketService:
     """Get user's group memberships (thread-safe)"""
     logger.info(f"=== GETTING USER GROUPS: {user_id} ===")
     try:
-      result = self._run_in_websocket_thread('user-group-membership.read', {'user_id': int(user_id)})
+      # Get user data to find membership IDs
+      user_result = self._run_in_websocket_thread('user.read', {'user_id': int(user_id)})
       
-      if result and 'data' in result:
-        memberships = []
-        for membership_data in result['data']:
-          # Convert group rank integer to string
-          group_rank_int = membership_data.get('attributes', {}).get('rank', 0)
-          group_rank_string = 'administrator' if group_rank_int == 2 else 'operator' if group_rank_int == 1 else 'member'
+      if not user_result or 'data' not in user_result:
+        logger.warning(f"✗ User {user_id} not found")
+        return []
+      
+      user_data = user_result['data']
+      if isinstance(user_data, list) and len(user_data) > 0:
+        user_data = user_data[0]
+      
+      # Extract membership IDs from user relationships
+      memberships_data = user_data.get('relationships', {}).get('memberships', {}).get('data', [])
+      if isinstance(memberships_data, dict):
+        memberships_data = [memberships_data]
+      
+      logger.debug(f"Found {len(memberships_data)} membership references for user {user_id}")
+      
+      memberships = []
+      for membership_ref in memberships_data:
+        membership_id = membership_ref.get('id')
+        if not membership_id:
+          continue
           
-          membership = {
-            'id': membership_data.get('id'),
-            'user_id': membership_data.get('attributes', {}).get('user_id'),
-            'group_id': membership_data.get('attributes', {}).get('group_id'),
-            'rank': group_rank_string,
-            'timestamp': membership_data.get('attributes', {}).get('timestamp'),
-            'group': membership_data.get('relationships', {}).get('group', {}).get('data', {})
-          }
-          memberships.append(membership)
-        logger.info(f"✓ Retrieved {len(memberships)} group memberships for user {user_id}")
-        return memberships
-      logger.warning(f"✗ No group memberships found for user {user_id}")
-      return []
+        logger.debug(f"Fetching membership {membership_id} for user {user_id}")
+        
+        try:
+          # Fetch individual membership
+          membership_result = self._run_in_websocket_thread('user-group-membership.read', {'membership_id': int(membership_id)})
+          
+          if membership_result and 'data' in membership_result:
+            membership_data = membership_result['data']
+            
+            # Convert group rank integer to string
+            group_rank_int = membership_data.get('attributes', {}).get('rank', 0)
+            group_rank_string = 'administrator' if group_rank_int == 2 else 'operator' if group_rank_int == 1 else 'member'
+            
+            # Get group ID from relationships
+            group_id = membership_data.get('relationships', {}).get('group', {}).get('data', {}).get('id')
+            
+            # Fetch complete group details
+            group_details = None
+            if group_id:
+              try:
+                group_result = self._run_in_websocket_thread('group.read', {'group_id': int(group_id)})
+                if group_result and 'data' in group_result:
+                  group_data = group_result['data']
+                  if isinstance(group_data, list) and len(group_data) > 0:
+                    group_data = group_data[0]
+                  group_details = {
+                    'id': group_data.get('id'),
+                    'name': group_data.get('attributes', {}).get('name'),
+                    'description': group_data.get('attributes', {}).get('description'),
+                    'version': group_data.get('attributes', {}).get('version', 0)
+                  }
+              except Exception as e:
+                logger.warning(f"Could not fetch group {group_id} details: {e}")
+                group_details = {'id': group_id, 'name': f'Group {group_id}', 'description': 'Unknown', 'version': 0}
+            
+            membership = {
+              'id': membership_data.get('id'),
+              'user_id': membership_data.get('attributes', {}).get('user_id'),
+              'group_id': group_id,
+              'rank': group_rank_string,
+              'timestamp': membership_data.get('attributes', {}).get('timestamp'),
+              'group': group_details or {'id': group_id, 'name': 'Unknown', 'description': 'Unknown', 'version': 0}
+            }
+            memberships.append(membership)
+            logger.debug(f"Added membership for user {user_id}: {membership}")
+          else:
+            logger.warning(f"✗ Could not fetch membership {membership_id}")
+            
+        except Exception as e:
+          logger.warning(f"✗ Error fetching membership {membership_id}: {e}")
+      
+      logger.info(f"✓ Retrieved {len(memberships)} group memberships for user {user_id}")
+      return memberships
     except Exception as e:
       logger.error(f"✗ Error getting user groups for {user_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
       return []
 
   def get_user_credentials(self, user_id):
@@ -735,31 +792,6 @@ class LeosacWebSocketService:
       return []
     except Exception as e:
       logger.error(f"✗ Error getting credentials: {e}")
-      return []
-
-  def get_doors(self):
-    """Get all doors (thread-safe)"""
-    logger.info("=== GETTING DOORS ===")
-    try:
-      result = self._run_in_websocket_thread('door.read', {'door_id': 0})
-      
-      if result and 'data' in result:
-        doors = []
-        for door_data in result['data']:
-          door = {
-            'id': door_data.get('id'),
-            'name': door_data.get('attributes', {}).get('name'),
-            'alias': door_data.get('attributes', {}).get('alias'),
-            'description': door_data.get('attributes', {}).get('description'),
-            'version': door_data.get('attributes', {}).get('version', 0)
-          }
-          doors.append(door)
-        logger.info(f"✓ Retrieved {len(doors)} doors")
-        return doors
-      logger.warning("✗ No doors data in response")
-      return []
-    except Exception as e:
-      logger.error(f"✗ Error getting doors: {e}")
       return []
 
   def get_credential(self, credential_id):
@@ -1037,31 +1069,31 @@ class LeosacWebSocketService:
               users_data = included_item.get('relationships', {}).get('users', {}).get('data', [])
               if isinstance(users_data, dict):
                 users_data = [users_data]
-              mapping['users'] = [int(user.get('id')) for user in users_data if user.get('id')]
+              mapping['users'] = [user.get('id') for user in users_data]
               
               # Extract group IDs from relationships
               groups_data = included_item.get('relationships', {}).get('groups', {}).get('data', [])
               if isinstance(groups_data, dict):
                 groups_data = [groups_data]
-              mapping['groups'] = [int(group.get('id')) for group in groups_data if group.get('id')]
+              mapping['groups'] = [group.get('id') for group in groups_data]
               
               # Extract credential IDs from relationships
               credentials_data = included_item.get('relationships', {}).get('credentials', {}).get('data', [])
               if isinstance(credentials_data, dict):
                 credentials_data = [credentials_data]
-              mapping['credentials'] = [int(cred.get('id')) for cred in credentials_data if cred.get('id')]
+              mapping['credentials'] = [cred.get('id') for cred in credentials_data]
               
               # Extract door IDs from relationships
               doors_data = included_item.get('relationships', {}).get('doors', {}).get('data', [])
               if isinstance(doors_data, dict):
                 doors_data = [doors_data]
-              mapping['doors'] = [int(door.get('id')) for door in doors_data if door.get('id')]
+              mapping['doors'] = [door.get('id') for door in doors_data]
               
               # Extract zone IDs from relationships
               zones_data = included_item.get('relationships', {}).get('zones', {}).get('data', [])
               if isinstance(zones_data, dict):
                 zones_data = [zones_data]
-              mapping['zones'] = [int(zone.get('id')) for zone in zones_data if zone.get('id')]
+              mapping['zones'] = [zone.get('id') for zone in zones_data]
               
               schedule['mapping'].append(mapping)
         
@@ -1312,12 +1344,11 @@ class LeosacWebSocketService:
       # Fetch all schedules and filter those mapped to this group
       schedules = self.get_schedules()
       group_schedules = []
-      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
       for schedule in schedules:
         # For each schedule, check if any mapping includes this group
         schedule_detail = self.get_schedule(schedule['id'])
         for mapping in schedule_detail.get('mapping', []):
-          if group_id_int in mapping.get('groups', []):
+          if group_id in mapping.get('groups', []):
             group_schedules.append(schedule)
             break
       logger.info(f"✓ Retrieved {len(group_schedules)} schedules for group {group_id}")
@@ -1401,18 +1432,16 @@ class LeosacWebSocketService:
         logger.error(f"✗ Schedule {schedule_id} not found")
         return False, {'error': 'Schedule not found'}
       
-      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
-      
       # Find or create a mapping that includes this group
       mapping_updated = False
       for mapping in schedule.get('mapping', []):
-        if group_id_int in mapping.get('groups', []):
+        if group_id in mapping.get('groups', []):
           logger.info(f"✓ Group {group_id} already mapped to schedule {schedule_id}")
           return True, {'message': 'Group already mapped'}
         
         # If this mapping has no groups, add the group to it
         if not mapping.get('groups'):
-          mapping['groups'].append(group_id_int)
+          mapping['groups'].append(group_id)
           mapping_updated = True
           break
       
@@ -1421,7 +1450,7 @@ class LeosacWebSocketService:
         new_mapping = {
           'alias': f'Group {group_id} mapping',
           'users': [],
-          'groups': [group_id_int],
+          'groups': [group_id],
           'credentials': [],
           'doors': [],
           'zones': []
@@ -1463,13 +1492,11 @@ class LeosacWebSocketService:
         logger.error(f"✗ Schedule {schedule_id} not found")
         return False, {'error': 'Schedule not found'}
       
-      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
-      
       # Find mappings that include this group and remove the group
       mapping_updated = False
       for mapping in schedule.get('mapping', []):
-        if group_id_int in mapping.get('groups', []):
-          mapping['groups'].remove(group_id_int)
+        if group_id in mapping.get('groups', []):
+          mapping['groups'].remove(group_id)
           mapping_updated = True
           logger.info(f"✓ Removed group {group_id} from mapping")
       

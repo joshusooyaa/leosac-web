@@ -170,7 +170,6 @@
                                                 <th>Group Name</th>
                                                 <th>Rank</th>
                                                 <th>Join Date</th>
-                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -181,11 +180,18 @@
                                                 <td>
                                                     <span class="badge badge-secondary">{{ membership.rank.title() }}</span>
                                                 </td>
-                                                <td>{{ membership.timestamp or 'Unknown' }}</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-danger" disabled>
-                                                        <i class="fas fa-times"></i> Leave
-                                                    </button>
+                                                    {% if membership.timestamp %}
+                                                        {% if membership.timestamp is string %}
+                                                            {% set date_part = membership.timestamp.split(' ')[0] %}
+                                                            {% set date_parts = date_part.split('-') %}
+                                                            {{ date_parts[1] }}/{{ date_parts[2] }}/{{ date_parts[0] }}
+                                                        {% else %}
+                                                            {{ membership.timestamp }}
+                                                        {% endif %}
+                                                    {% else %}
+                                                        Unknown
+                                                    {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}

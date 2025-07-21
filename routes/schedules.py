@@ -152,13 +152,11 @@ def schedule_view(schedule_id):
 @login_required
 def schedule_edit(schedule_id):
     try:
-        logger.info(f'--- schedule_edit called for schedule_id={schedule_id} ---')
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:
             flash('WebSocket connection not available. Please try again.', 'error')
             return redirect(url_for('schedules.schedules_list'))
         schedule = leosac_client.get_schedule(schedule_id)
-        logger.info(f'Raw schedule from API: {schedule}')
         if not schedule:
             flash('Schedule not found.', 'error')
             return redirect(url_for('schedules.schedules_list'))
@@ -167,14 +165,10 @@ def schedule_edit(schedule_id):
         credentials = leosac_client.get_credentials()
         doors = leosac_client.get_doors()
         if schedule.get('timeframes'):
-            logger.info(f'Original timeframes: {schedule["timeframes"]}')
             schedule['timeframes'] = group_timeframes_for_display(schedule['timeframes'])
-            logger.info(f'Processed timeframes: {schedule["timeframes"]}')
         if request.method == 'POST':
-            logger.info(f'Processing POST request for schedule {schedule_id}')
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
-            logger.info(f'Form data - name: {name}, description: {description}')
             if not name:
                 flash('Schedule name is required.', 'error')
                 return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
@@ -192,7 +186,6 @@ def schedule_edit(schedule_id):
             while f'timeframes[{timeframe_counter}][start_time]' in request.form:
                 start_time = request.form.get(f'timeframes[{timeframe_counter}][start_time]')
                 end_time = request.form.get(f'timeframes[{timeframe_counter}][end_time]')
-                logger.info(f'Processing timeframe {timeframe_counter}: start_time={start_time}, end_time={end_time}')
                 if start_time and end_time:
                     selected_days = []
                     for day_name, day_value in [
@@ -201,7 +194,6 @@ def schedule_edit(schedule_id):
                     ]:
                         if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
                             selected_days.append(day_value)
-                    logger.info(f'Selected days for timeframe {timeframe_counter}: {selected_days}')
                     for day in selected_days:
                         timeframe = {
                             'id': len(timeframes),
@@ -211,7 +203,6 @@ def schedule_edit(schedule_id):
                         }
                         timeframes.append(timeframe)
                 timeframe_counter += 1
-            logger.info(f'Processed timeframes: {timeframes}')
             mapping_data = []
             mapping_indices = set()
             import re as _re
@@ -220,7 +211,6 @@ def schedule_edit(schedule_id):
                     m = _re.match(r'mappings\[(\d+)\]', key)
                     if m:
                         mapping_indices.add(int(m.group(1)))
-            logger.info(f'Found mapping indices: {mapping_indices}')
             all_users = []
             all_groups = []
             all_credentials = []
@@ -234,7 +224,6 @@ def schedule_edit(schedule_id):
                 groups_selected = request.form.getlist(f'mappings[{idx}][groups][]')
                 credentials_selected = request.form.getlist(f'mappings[{idx}][credentials][]')
                 doors_selected = request.form.getlist(f'mappings[{idx}][doors][]')
-                logger.info(f'Mapping {idx}: alias={this_alias}, users={users_selected}, groups={groups_selected}, credentials={credentials_selected}, doors={doors_selected}')
                 all_users.extend([int(uid) for uid in users_selected if uid and uid.strip()])
                 all_groups.extend([int(gid) for gid in groups_selected if gid and gid.strip()])
                 all_credentials.extend([int(cid) for cid in credentials_selected if cid and cid.strip()])
@@ -254,15 +243,12 @@ def schedule_edit(schedule_id):
                     'zones': []
                 }
                 mapping_data.append(mapping)
-            logger.info(f'Final mapping data: {mapping_data}')
             schedule_data = {
                 'name': name,
                 'description': description,
                 'timeframes': timeframes
             }
-            logger.info(f'Final schedule data: {schedule_data}')
             success, result = leosac_client.update_schedule(schedule_id, schedule_data, mapping_data)
-            logger.info(f'Update result: success={success}, result={result}')
             if success:
                 flash('Schedule updated successfully!', 'success')
                 return redirect(url_for('schedules.schedule_view', schedule_id=schedule_id))
@@ -272,8 +258,6 @@ def schedule_edit(schedule_id):
                 return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
         return render_template('schedules/edit.html', schedule=schedule, users=users, groups=groups, credentials=credentials, doors=doors)
     except Exception as e:
-        logger.error(f'Error editing schedule {schedule_id}: {str(e)}')
-        logger.error(f'Traceback: {traceback.format_exc()}')
         flash('Error editing schedule. Please try again.', 'error')
         return redirect(url_for('schedules.schedules_list'))
 
