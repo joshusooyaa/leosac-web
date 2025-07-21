@@ -8,15 +8,24 @@ import traceback
 
 schedules_bp = Blueprint('schedules', __name__)
 
+def pad_time(timestr):
+    # Accepts '0:0', '6:0', '12:59', etc. Returns '00:00', '06:00', '12:59'
+    if not timestr:
+        return ''
+    parts = str(timestr).split(':')
+    if len(parts) == 2:
+        return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+    return timestr
+
 def group_timeframes_for_display(timeframes):
     if not timeframes:
         return []
     grouped = {}
     for tf in timeframes:
-        start_time = tf.get('start-time') or tf.get('start_time')
-        end_time = tf.get('end-time') or tf.get('end_time')
+        start_time = pad_time(tf.get('start-time') or tf.get('start_time'))
+        end_time = pad_time(tf.get('end-time') or tf.get('end_time'))
         day = tf.get('day')
-        if start_time and end_time:
+        if start_time and end_time and day is not None:
             key = f"{start_time}-{end_time}"
             if key not in grouped:
                 grouped[key] = {
@@ -24,14 +33,14 @@ def group_timeframes_for_display(timeframes):
                     'end_time': end_time,
                     'days': set()
                 }
-            grouped[key]['days'].add(day)
+            grouped[key]['days'].add(int(day))
     result = []
     for i, (key, data) in enumerate(grouped.items()):
         timeframe = {
             'id': i,
             'start_time': data['start_time'],
             'end_time': data['end_time'],
-            'days': data['days']
+            'days': sorted(list(data['days']))
         }
         result.append(timeframe)
     return result

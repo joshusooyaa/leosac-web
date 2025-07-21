@@ -41,7 +41,7 @@
                       <td>{{ schedule.description or 'No description' }}</td>
                       <td>
                         {% if schedule.timeframes %}
-                          {{ schedule.timeframes|length }} timeframe(s)
+                          {{ schedule.timeframes|unique_timeframe_count }} timeframe(s)
                         {% else %}
                           <span class="text-muted">No timeframes</span>
                         {% endif %}

@@ -269,6 +269,17 @@ def auditlog():
 def settings():
     return render_template('settings.html')
 
+def unique_timeframe_count(timeframes):
+    pairs = set()
+    for tf in timeframes or []:
+        start = tf.get('start_time') if 'start_time' in tf else tf.get('start-time')
+        end = tf.get('end_time') if 'end_time' in tf else tf.get('end-time')
+        if start is not None and end is not None:
+            pairs.add(f"{start}-{end}")
+    return len(pairs)
+
+app.jinja_env.filters['unique_timeframe_count'] = unique_timeframe_count
+
 if __name__ == '__main__':
     logger.info("=== MAIN APPLICATION STARTING ===")
     logger.info(f"Current thread: {threading.current_thread().name}")
