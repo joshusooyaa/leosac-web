@@ -737,6 +737,31 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error getting credentials: {e}")
       return []
 
+  def get_doors(self):
+    """Get all doors (thread-safe)"""
+    logger.info("=== GETTING DOORS ===")
+    try:
+      result = self._run_in_websocket_thread('door.read', {'door_id': 0})
+      
+      if result and 'data' in result:
+        doors = []
+        for door_data in result['data']:
+          door = {
+            'id': door_data.get('id'),
+            'name': door_data.get('attributes', {}).get('name'),
+            'alias': door_data.get('attributes', {}).get('alias'),
+            'description': door_data.get('attributes', {}).get('description'),
+            'version': door_data.get('attributes', {}).get('version', 0)
+          }
+          doors.append(door)
+        logger.info(f"✓ Retrieved {len(doors)} doors")
+        return doors
+      logger.warning("✗ No doors data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting doors: {e}")
+      return []
+
   def get_credential(self, credential_id):
     """Get a specific credential by ID (thread-safe)"""
     logger.info(f"=== GETTING CREDENTIAL: {credential_id} ===")
@@ -1012,31 +1037,31 @@ class LeosacWebSocketService:
               users_data = included_item.get('relationships', {}).get('users', {}).get('data', [])
               if isinstance(users_data, dict):
                 users_data = [users_data]
-              mapping['users'] = [user.get('id') for user in users_data]
+              mapping['users'] = [int(user.get('id')) for user in users_data if user.get('id')]
               
               # Extract group IDs from relationships
               groups_data = included_item.get('relationships', {}).get('groups', {}).get('data', [])
               if isinstance(groups_data, dict):
                 groups_data = [groups_data]
-              mapping['groups'] = [group.get('id') for group in groups_data]
+              mapping['groups'] = [int(group.get('id')) for group in groups_data if group.get('id')]
               
               # Extract credential IDs from relationships
               credentials_data = included_item.get('relationships', {}).get('credentials', {}).get('data', [])
               if isinstance(credentials_data, dict):
                 credentials_data = [credentials_data]
-              mapping['credentials'] = [cred.get('id') for cred in credentials_data]
+              mapping['credentials'] = [int(cred.get('id')) for cred in credentials_data if cred.get('id')]
               
               # Extract door IDs from relationships
               doors_data = included_item.get('relationships', {}).get('doors', {}).get('data', [])
               if isinstance(doors_data, dict):
                 doors_data = [doors_data]
-              mapping['doors'] = [door.get('id') for door in doors_data]
+              mapping['doors'] = [int(door.get('id')) for door in doors_data if door.get('id')]
               
               # Extract zone IDs from relationships
               zones_data = included_item.get('relationships', {}).get('zones', {}).get('data', [])
               if isinstance(zones_data, dict):
                 zones_data = [zones_data]
-              mapping['zones'] = [zone.get('id') for zone in zones_data]
+              mapping['zones'] = [int(zone.get('id')) for zone in zones_data if zone.get('id')]
               
               schedule['mapping'].append(mapping)
         
@@ -1287,11 +1312,12 @@ class LeosacWebSocketService:
       # Fetch all schedules and filter those mapped to this group
       schedules = self.get_schedules()
       group_schedules = []
+      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
       for schedule in schedules:
         # For each schedule, check if any mapping includes this group
         schedule_detail = self.get_schedule(schedule['id'])
         for mapping in schedule_detail.get('mapping', []):
-          if group_id in mapping.get('groups', []):
+          if group_id_int in mapping.get('groups', []):
             group_schedules.append(schedule)
             break
       logger.info(f"✓ Retrieved {len(group_schedules)} schedules for group {group_id}")
@@ -1375,16 +1401,18 @@ class LeosacWebSocketService:
         logger.error(f"✗ Schedule {schedule_id} not found")
         return False, {'error': 'Schedule not found'}
       
+      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
+      
       # Find or create a mapping that includes this group
       mapping_updated = False
       for mapping in schedule.get('mapping', []):
-        if group_id in mapping.get('groups', []):
+        if group_id_int in mapping.get('groups', []):
           logger.info(f"✓ Group {group_id} already mapped to schedule {schedule_id}")
           return True, {'message': 'Group already mapped'}
         
         # If this mapping has no groups, add the group to it
         if not mapping.get('groups'):
-          mapping['groups'].append(group_id)
+          mapping['groups'].append(group_id_int)
           mapping_updated = True
           break
       
@@ -1393,7 +1421,7 @@ class LeosacWebSocketService:
         new_mapping = {
           'alias': f'Group {group_id} mapping',
           'users': [],
-          'groups': [group_id],
+          'groups': [group_id_int],
           'credentials': [],
           'doors': [],
           'zones': []
@@ -1435,11 +1463,13 @@ class LeosacWebSocketService:
         logger.error(f"✗ Schedule {schedule_id} not found")
         return False, {'error': 'Schedule not found'}
       
+      group_id_int = int(group_id)  # Ensure group_id is an integer for comparison
+      
       # Find mappings that include this group and remove the group
       mapping_updated = False
       for mapping in schedule.get('mapping', []):
-        if group_id in mapping.get('groups', []):
-          mapping['groups'].remove(group_id)
+        if group_id_int in mapping.get('groups', []):
+          mapping['groups'].remove(group_id_int)
           mapping_updated = True
           logger.info(f"✓ Removed group {group_id} from mapping")
       
