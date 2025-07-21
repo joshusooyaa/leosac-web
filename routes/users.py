@@ -125,7 +125,54 @@ def profile(user_id):
             # Get additional user data
             user_groups = leosac_client.get_user_groups(user_id)
             user_credentials = leosac_client.get_user_credentials(user_id)
-            user_schedules = leosac_client.get_user_schedules(user_id)
+
+            # Collect group and credential IDs for indirect mapping
+            group_ids = set()
+            for g in user_groups:
+                if g.get('group_id'):
+                    group_ids.add(str(g['group_id']))
+            credential_ids = set()
+            for c in user_credentials:
+                if c.get('id'):
+                    credential_ids.add(str(c['id']))
+
+            # Fetch all schedules (with mappings)
+            all_schedules_raw = leosac_client._run_in_websocket_thread('schedule.read', {'schedule_id': 0})
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Raw schedules response: {all_schedules_raw}")
+            user_schedules = []
+            if all_schedules_raw and 'data' in all_schedules_raw:
+                included_mappings = []
+                if 'included' in all_schedules_raw:
+                    for item in all_schedules_raw['included']:
+                        if item.get('type') == 'schedule-mapping':
+                            included_mappings.append(item)
+                logger.info(f"Included schedule mappings: {included_mappings}")
+                # Build mapping_id -> mapping object
+                mapping_id_to_mapping = {str(m['id']): m for m in included_mappings}
+                for schedule_data in all_schedules_raw['data']:
+                    schedule_id = str(schedule_data.get('id'))
+                    mapping_refs = schedule_data.get('relationships', {}).get('mapping', {}).get('data', [])
+                    mappings = [mapping_id_to_mapping.get(str(ref.get('id'))) for ref in mapping_refs if mapping_id_to_mapping.get(str(ref.get('id')))]
+                    logger.info(f"Checking schedule {schedule_id} ({schedule_data.get('attributes', {}).get('name')}) with mappings: {mappings}")
+                    for mapping in mappings:
+                        user_ids = [str(u.get('id')) for u in mapping.get('relationships', {}).get('users', {}).get('data', [])]
+                        group_ids_map = [str(g.get('id')) for g in mapping.get('relationships', {}).get('groups', {}).get('data', [])]
+                        cred_ids_map = [str(c.get('id')) for c in mapping.get('relationships', {}).get('credentials', {}).get('data', [])]
+                        logger.info(f"Mapping {mapping.get('id')}: user_id={user_id} user_ids={user_ids} group_ids={group_ids} group_ids_map={group_ids_map} credential_ids={credential_ids} cred_ids_map={cred_ids_map}")
+                        if (str(user_id) in user_ids) or (set(group_ids_map) & group_ids) or (set(cred_ids_map) & credential_ids):
+                            logger.info(f"User {user_id} matched mapping {mapping.get('id')} for schedule {schedule_id}")
+                            schedule = {
+                                'id': schedule_data.get('id'),
+                                'name': schedule_data.get('attributes', {}).get('name'),
+                                'description': schedule_data.get('attributes', {}).get('description'),
+                                'timeframes': schedule_data.get('attributes', {}).get('timeframes', []),
+                                'version': schedule_data.get('attributes', {}).get('version', 0)
+                            }
+                            user_schedules.append(schedule)
+                            break  # Only need to add once per schedule
+                logger.info(f"User {user_id} schedules after filtering: {user_schedules}")
             
             return render_template('profile.html', 
                                  user=user, 
@@ -138,6 +185,8 @@ def profile(user_id):
             return redirect(url_for('users.users_list'))
             
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception(f'Error loading user profile: {str(e)}')
         flash(f'Error loading user profile: {str(e)}', 'error')
         return redirect(url_for('users.users_list'))
 
