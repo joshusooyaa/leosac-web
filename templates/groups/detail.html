@@ -51,55 +51,47 @@
           <hr>
           <ul class="nav nav-tabs" id="groupTabs" role="tablist">
             <li class="nav-item">
-              <a class="nav-link active" id="members-tab" data-toggle="tab" href="#members" role="tab">Members</a>
+              <a class="nav-link active" id="members-tab" data-bs-toggle="tab" href="#members" role="tab">Members</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" id="schedules-tab" data-toggle="tab" href="#schedules" role="tab">Schedules</a>
+              <a class="nav-link" id="schedules-tab" data-bs-toggle="tab" href="#schedules" role="tab">Schedules</a>
             </li>
           </ul>
           <div class="tab-content mt-3" id="groupTabsContent">
             <div class="tab-pane fade show active" id="members" role="tabpanel">
-                <div class="mt-4">
-                    <h5>Group Members</h5>
-                    
-                    <!-- Members List -->
-                    {% if group.memberships %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>User ID</th>
-                                    <th>Name</th>
-                                    <th>Username</th>
-                                    <th>Rank</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for membership in group.memberships %}
-                                <tr>
-                                    <td>{{ membership.user_id }}</td>
-                                    <td>{{ membership.firstname }} {{ membership.lastname }}</td>
-                                    <td>{{ membership.username }}</td>
-                                    <td>{{ membership.rank }}</td>
-                                    <td>
-                                        <form method="POST" action="{{ url_for('groups.group_remove_user', group_id=group.id, membership_id=membership.membership_id) }}" style="display: inline;">
-                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this user from the group?')">
-                                                <i class="fas fa-trash"></i> Remove
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> No users are currently members of this group.
-                    </div>
-                    {% endif %}
+              <div class="mt-4">
+                <h5>Group Members</h5>
+                
+                <!-- Members List -->
+                {% if group.memberships %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>User ID</th>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Rank</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for membership in group.memberships %}
+                            <tr>
+                                <td>{{ membership.user_id }}</td>
+                                <td>{{ membership.firstname }} {{ membership.lastname }}</td>
+                                <td>{{ membership.username }}</td>
+                                <td>{{ membership.rank }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No users are currently members of this group.
+                </div>
+                {% endif %}
+              </div>
             </div>
             <div class="tab-pane fade" id="schedules" role="tabpanel">
               <h5>Schedules</h5>
@@ -134,4 +126,30 @@
     </div>
   </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Always log on page load
+  console.log('=== GROUP DETAIL PAGE LOADED ===');
+  console.log('Group data:', {{ group|tojson|safe }});
+  console.log('Group schedules:', {{ group.schedules|tojson|safe }});
+
+  // Listen for Bootstrap 5 tab show event
+  $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+    var tabId = e.target.id;
+    console.log('=== TAB SHOWN ===', tabId);
+    if (tabId === 'schedules-tab') {
+      console.log('=== SCHEDULES TAB SHOWN ===');
+      console.log('Group data at schedules tab:', {{ group|tojson|safe }});
+      console.log('Schedules at schedules tab:', {{ group.schedules|tojson|safe }});
+      var schedTab = document.getElementById('schedules');
+      if (schedTab) {
+        console.log('Schedules tab HTML:', schedTab.innerHTML);
+      } else {
+        console.log('Schedules tab element not found');
+      }
+    }
+  });
+});
+</script> 

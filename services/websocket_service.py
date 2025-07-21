@@ -1181,7 +1181,8 @@ class LeosacWebSocketService:
           'id': group_data.get('id'),
           'name': group_data.get('attributes', {}).get('name'),
           'description': group_data.get('attributes', {}).get('description'),
-          'version': group_data.get('attributes', {}).get('version', 0)
+          'version': group_data.get('attributes', {}).get('version', 0),
+          'relationships': group_data.get('relationships', {})
         }
         logger.info(f"✓ Retrieved group {group_id}")
         return group
@@ -1362,6 +1363,108 @@ class LeosacWebSocketService:
         return False, {'error': 'Server returned no response'}
     except Exception as e:
       logger.error(f"✗ Error deleting membership {membership_id}: {e}")
+      return False, {'error': str(e)}
+
+  def map_schedule_to_group(self, schedule_id, group_id):
+    """Map a schedule to a group by updating the schedule's mapping (thread-safe)"""
+    logger.info(f"=== MAPPING SCHEDULE {schedule_id} TO GROUP {group_id} ===")
+    try:
+      # Get the current schedule with its mappings
+      schedule = self.get_schedule(schedule_id)
+      if not schedule:
+        logger.error(f"✗ Schedule {schedule_id} not found")
+        return False, {'error': 'Schedule not found'}
+      
+      # Find or create a mapping that includes this group
+      mapping_updated = False
+      for mapping in schedule.get('mapping', []):
+        if group_id in mapping.get('groups', []):
+          logger.info(f"✓ Group {group_id} already mapped to schedule {schedule_id}")
+          return True, {'message': 'Group already mapped'}
+        
+        # If this mapping has no groups, add the group to it
+        if not mapping.get('groups'):
+          mapping['groups'].append(group_id)
+          mapping_updated = True
+          break
+      
+      # If no suitable mapping found, create a new one
+      if not mapping_updated:
+        new_mapping = {
+          'alias': f'Group {group_id} mapping',
+          'users': [],
+          'groups': [group_id],
+          'credentials': [],
+          'doors': [],
+          'zones': []
+        }
+        schedule['mapping'].append(new_mapping)
+        mapping_updated = True
+      
+      if mapping_updated:
+        # Update the schedule with the new mapping
+        schedule_data = {
+          'name': schedule['name'],
+          'description': schedule['description'],
+          'timeframes': schedule['timeframes']
+        }
+        
+        success, result = self.update_schedule(schedule_id, schedule_data, schedule['mapping'])
+        if success:
+          logger.info(f"✓ Successfully mapped schedule {schedule_id} to group {group_id}")
+          return True, result
+        else:
+          logger.error(f"✗ Failed to update schedule mapping: {result}")
+          return False, result
+      else:
+        logger.error(f"✗ Could not create or update mapping for group {group_id}")
+        return False, {'error': 'Could not create mapping'}
+        
+    except Exception as e:
+      logger.error(f"✗ Error mapping schedule {schedule_id} to group {group_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def unmap_schedule_from_group(self, schedule_id, group_id):
+    """Unmap a schedule from a group by updating the schedule's mapping (thread-safe)"""
+    logger.info(f"=== UNMAPPING SCHEDULE {schedule_id} FROM GROUP {group_id} ===")
+    try:
+      # Get the current schedule with its mappings
+      schedule = self.get_schedule(schedule_id)
+      if not schedule:
+        logger.error(f"✗ Schedule {schedule_id} not found")
+        return False, {'error': 'Schedule not found'}
+      
+      # Find mappings that include this group and remove the group
+      mapping_updated = False
+      for mapping in schedule.get('mapping', []):
+        if group_id in mapping.get('groups', []):
+          mapping['groups'].remove(group_id)
+          mapping_updated = True
+          logger.info(f"✓ Removed group {group_id} from mapping")
+      
+      if mapping_updated:
+        # Update the schedule with the modified mapping
+        schedule_data = {
+          'name': schedule['name'],
+          'description': schedule['description'],
+          'timeframes': schedule['timeframes']
+        }
+        
+        success, result = self.update_schedule(schedule_id, schedule_data, schedule['mapping'])
+        if success:
+          logger.info(f"✓ Successfully unmapped schedule {schedule_id} from group {group_id}")
+          return True, result
+        else:
+          logger.error(f"✗ Failed to update schedule mapping: {result}")
+          return False, result
+      else:
+        logger.warning(f"✗ Group {group_id} not found in any mapping for schedule {schedule_id}")
+        return False, {'error': 'Group not mapped to this schedule'}
+        
+    except Exception as e:
+      logger.error(f"✗ Error unmapping schedule {schedule_id} from group {group_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
 leosac_client = LeosacWebSocketService()

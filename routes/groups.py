@@ -81,25 +81,19 @@ def group_detail(group_id):
             return redirect(url_for('groups.groups_list'))
         memberships = get_group_memberships_full(group_id)
         group['memberships'] = memberships
-        # Get all users for add user dropdown
-        all_users = get_all_users_for_selection()
-        # Schedules: try to use relationships if present, else fallback
-        group_schedules = []
-        rel_schedules = group.get('relationships', {}).get('schedules', {}).get('data', [])
-        if rel_schedules is None:
-            rel_schedules = []
-        if rel_schedules:
-            all_schedules = leosac_client.get_schedules()
-            for sched_ref in rel_schedules:
-                sched = next((s for s in all_schedules if str(s['id']) == str(sched_ref['id'])), None)
-                if sched:
-                    group_schedules.append(sched)
-        else:
-            group_schedules = leosac_client.get_group_schedules(group_id)
-        logger.info(f'Group {group_id} schedules: {group_schedules}')
-        group['schedules'] = group_schedules
+        # Schedules: always use get_group_schedules for reliability
+        group_schedules = leosac_client.get_group_schedules(group_id)
+        group['schedules'] = [
+            {
+                'id': sched['id'],
+                'name': sched.get('name', ''),
+                'description': sched.get('description', '')
+            }
+            for sched in group_schedules
+        ]
+        logger.info(f'Group {group_id} schedules: {group["schedules"]}')
         logger.info(f'Final group for template: {group}')
-        return render_template('groups/detail.html', group=group, all_users=all_users)
+        return render_template('groups/detail.html', group=group)
     except Exception as e:
         logger.error(f'Error loading group detail: {str(e)}')
         logger.error(f'Traceback: {traceback.format_exc()}')
@@ -159,10 +153,27 @@ def group_edit(group_id):
         all_users = get_all_users_for_selection()
         memberships = get_group_memberships_full(group_id)
         group['memberships'] = memberships
+        
+        # Get current schedules for this group
+        group_schedules = leosac_client.get_group_schedules(group_id)
+        group['schedules'] = [
+            {
+                'id': sched['id'],
+                'name': sched.get('name', ''),
+                'description': sched.get('description', '')
+            }
+            for sched in group_schedules
+        ]
+        
+        # Get all schedules for dropdown
+        all_schedules = leosac_client.get_schedules()
+        
         if request.method == 'POST':
             name = request.form.get('name', '').strip()
             description = request.form.get('description', '').strip()
             members_raw = request.form.getlist('members[]')
+            schedules_raw = request.form.getlist('schedules[]')
+            
             # Parse members: each entry is user_id:rank
             new_members = []
             for m in members_raw:
@@ -171,16 +182,26 @@ def group_edit(group_id):
                     new_members.append({'user_id': int(user_id), 'rank': int(rank)})
                 except Exception as e:
                     continue
+            
+            # Parse schedules: each entry is schedule_id
+            new_schedules = []
+            for s in schedules_raw:
+                try:
+                    new_schedules.append(int(s))
+                except Exception as e:
+                    continue
+            
             # Update group info
             if not name:
                 flash('Group name is required.', 'error')
-                return render_template('groups/edit.html', group=group, all_users=all_users)
+                return render_template('groups/edit.html', group=group, all_users=all_users, all_schedules=all_schedules)
             if len(name) < 3:
                 flash('Group name must be at least 3 characters long.', 'error')
-                return render_template('groups/edit.html', group=group, all_users=all_users)
+                return render_template('groups/edit.html', group=group, all_users=all_users, all_schedules=all_schedules)
             if len(name) > 50:
                 flash('Group name must be no more than 50 characters long.', 'error')
-                return render_template('groups/edit.html', group=group, all_users=all_users)
+                return render_template('groups/edit.html', group=group, all_users=all_users, all_schedules=all_schedules)
+            
             group_data = {
                 'name': name,
                 'description': description
@@ -189,7 +210,8 @@ def group_edit(group_id):
             if not success:
                 error_msg = result.get('error', 'Unknown error occurred')
                 flash(f'Failed to update group: {error_msg}', 'error')
-                return render_template('groups/edit.html', group=group, all_users=all_users)
+                return render_template('groups/edit.html', group=group, all_users=all_users, all_schedules=all_schedules)
+            
             # Update memberships: remove all, then add new
             # Get current memberships from backend
             current_memberships = get_group_memberships_full(group_id)
@@ -203,9 +225,25 @@ def group_edit(group_id):
             for m in new_members:
                 if m['user_id'] not in current_user_ids:
                     leosac_client.create_membership(m['user_id'], group_id, m['rank'])
+            
+            # Update schedule mappings
+            current_schedule_ids = set(s['id'] for s in group['schedules'])
+            new_schedule_ids = set(new_schedules)
+            
+            # Remove schedules not in new list
+            for schedule_id in current_schedule_ids:
+                if schedule_id not in new_schedule_ids:
+                    leosac_client.unmap_schedule_from_group(schedule_id, group_id)
+            
+            # Add schedules not already present
+            for schedule_id in new_schedule_ids:
+                if schedule_id not in current_schedule_ids:
+                    leosac_client.map_schedule_to_group(schedule_id, group_id)
+            
             flash('Group updated successfully!', 'success')
             return redirect(url_for('groups.group_detail', group_id=group_id))
-        return render_template('groups/edit.html', group=group, all_users=all_users)
+        
+        return render_template('groups/edit.html', group=group, all_users=all_users, all_schedules=all_schedules)
     except Exception as e:
         flash('Error editing group. Please try again.', 'error')
         return redirect(url_for('groups.groups_list'))

@@ -98,6 +98,86 @@
               </table>
             </div>
 
+            <hr>
+
+            <!-- Schedule Management -->
+            <h5>Schedule Mappings</h5>
+            <p class="text-muted">Manage which schedules are mapped to this group. These schedules control when group members can access doors.</p>
+            
+            <!-- Current Schedules -->
+            <div class="card mb-4">
+              <div class="card-header">
+                <h6 class="mb-0">Current Schedule Mappings</h6>
+              </div>
+              <div class="card-body">
+                {% if group.schedules %}
+                <div class="table-responsive">
+                  <table class="table table-hover" id="schedules_table">
+                    <thead class="thead-light">
+                      <tr>
+                        <th>Schedule ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="schedules_tbody">
+                      {% for schedule in group.schedules %}
+                      <tr data-schedule-id="{{ schedule.id }}">
+                        <td>{{ schedule.id }}</td>
+                        <td>{{ schedule.name }}</td>
+                        <td>{{ schedule.description or 'No description' }}</td>
+                        <td>
+                          <button type="button" class="btn btn-danger btn-sm remove-schedule-btn">
+                            <i class="fas fa-trash"></i> Remove
+                          </button>
+                        </td>
+                        <input type="hidden" name="schedules[]" value="{{ schedule.id }}">
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                  <i class="fas fa-info-circle"></i> No schedules are currently mapped to this group.
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Add Schedule to Group -->
+            <div class="card mb-4">
+              <div class="card-header">
+                <h6 class="mb-0">Add Schedule to Group</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-8">
+                    <div class="form-group">
+                      <label for="schedule_id">Select Schedule</label>
+                      <select class="form-control" id="schedule_id_select">
+                        <option value="">Choose a schedule...</option>
+                        {% for schedule in all_schedules %}
+                          <option value="{{ schedule.id }}" data-name="{{ schedule.name }}" data-description="{{ schedule.description or '' }}">
+                            {{ schedule.name }} {% if schedule.description %}({{ schedule.description }}){% endif %}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-group">
+                      <label>&nbsp;</label>
+                      <button type="button" class="btn btn-primary btn-block" id="add_schedule_btn">
+                        <i class="fas fa-plus"></i> Add Schedule
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="form-group mt-4">
               <button type="submit" class="btn btn-success btn-lg btn-block">Update Group</button>
               <a href="{{ url_for('groups.group_detail', group_id=group.id) }}" class="btn btn-secondary btn-block">Cancel</a>
@@ -114,6 +194,13 @@
 let members = [
   {% for membership in group.memberships %}
     {user_id: {{ membership.user_id }}, rank: {{ membership.rank }}, username: "{{ membership.username }}", firstname: "{{ membership.firstname }}", lastname: "{{ membership.lastname }}"},
+  {% endfor %}
+];
+
+// Local list of schedules (schedule_id, name, description)
+let schedules = [
+  {% for schedule in group.schedules %}
+    {schedule_id: {{ schedule.id }}, name: "{{ schedule.name }}", description: "{{ schedule.description or '' }}"},
   {% endfor %}
 ];
 
@@ -135,11 +222,37 @@ function renderMembersTable() {
   });
 }
 
+function renderSchedulesTable() {
+  const tbody = document.getElementById('schedules_tbody');
+  if (!tbody) return; // Table might not exist if no schedules
+  
+  tbody.innerHTML = '';
+  schedules.forEach(function(schedule) {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-schedule-id', schedule.schedule_id);
+    tr.innerHTML = `
+      <td>${schedule.schedule_id}</td>
+      <td>${schedule.name}</td>
+      <td>${schedule.description || 'No description'}</td>
+      <td><button type="button" class="btn btn-danger btn-sm remove-schedule-btn"><i class="fas fa-trash"></i> Remove</button></td>
+      <input type="hidden" name="schedules[]" value="${schedule.schedule_id}">
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 // Remove user from members list
 function removeUserFromMembers(user_id) {
   members = members.filter(m => m.user_id != user_id);
   renderMembersTable();
   updateUserDropdown();
+}
+
+// Remove schedule from schedules list
+function removeScheduleFromSchedules(schedule_id) {
+  schedules = schedules.filter(s => s.schedule_id != schedule_id);
+  renderSchedulesTable();
+  updateScheduleDropdown();
 }
 
 // Update the user dropdown to exclude already-added members
@@ -157,10 +270,30 @@ function updateUserDropdown() {
   });
 }
 
+// Update the schedule dropdown to exclude already-added schedules
+function updateScheduleDropdown() {
+  const select = document.getElementById('schedule_id_select');
+  if (!select) return; // Dropdown might not exist if no schedules available
+  
+  const options = select.querySelectorAll('option');
+  options.forEach(option => {
+    if (!option.value) return;
+    const schedule_id = option.value;
+    const alreadyAdded = schedules.some(s => s.schedule_id == schedule_id);
+    option.disabled = alreadyAdded;
+    if (alreadyAdded && select.value == schedule_id) {
+      select.value = '';
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   renderMembersTable();
   updateUserDropdown();
+  renderSchedulesTable();
+  updateScheduleDropdown();
 
+  // User management
   document.getElementById('add_user_btn').addEventListener('click', function() {
     const select = document.getElementById('user_id_select');
     const user_id = select.value;
@@ -178,6 +311,25 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('rank_input').value = 0;
   });
 
+  // Schedule management
+  const addScheduleBtn = document.getElementById('add_schedule_btn');
+  if (addScheduleBtn) {
+    addScheduleBtn.addEventListener('click', function() {
+      const select = document.getElementById('schedule_id_select');
+      const schedule_id = select.value;
+      if (!schedule_id) return;
+      const selectedOption = select.options[select.selectedIndex];
+      const name = selectedOption.getAttribute('data-name');
+      const description = selectedOption.getAttribute('data-description');
+      if (schedules.some(s => s.schedule_id == schedule_id)) return;
+      schedules.push({schedule_id: schedule_id, name: name, description: description});
+      renderSchedulesTable();
+      updateScheduleDropdown();
+      select.value = '';
+    });
+  }
+
+  // Event delegation for remove buttons
   document.getElementById('members_tbody').addEventListener('click', function(e) {
     if (e.target.closest('.remove-user-btn')) {
       const tr = e.target.closest('tr');
@@ -185,6 +337,17 @@ document.addEventListener('DOMContentLoaded', function() {
       removeUserFromMembers(user_id);
     }
   });
+
+  const schedulesTbody = document.getElementById('schedules_tbody');
+  if (schedulesTbody) {
+    schedulesTbody.addEventListener('click', function(e) {
+      if (e.target.closest('.remove-schedule-btn')) {
+        const tr = e.target.closest('tr');
+        const schedule_id = tr.getAttribute('data-schedule-id');
+        removeScheduleFromSchedules(schedule_id);
+      }
+    });
+  }
 });
 </script>
 {% endblock %} 
