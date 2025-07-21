@@ -1164,28 +1164,204 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error getting groups: {e}")
       return []
 
-  def get_doors(self):
-    """Get all doors (thread-safe)"""
-    logger.info("=== GETTING DOORS ===")
+  def get_group(self, group_id):
+    """Get a specific group by ID (thread-safe)"""
+    logger.info(f"=== GETTING GROUP: {group_id} ===")
     try:
-      result = self._run_in_websocket_thread('door.read', {'door_id': 0})
+      result = self._run_in_websocket_thread('group.read', {'group_id': int(group_id)})
       if result and 'data' in result:
-        doors = []
-        for door_data in result['data']:
-          door = {
-            'id': door_data.get('id'),
-            'name': door_data.get('attributes', {}).get('name'),
-            'description': door_data.get('attributes', {}).get('description'),
-            'zone': door_data.get('relationships', {}).get('zone', {}).get('data', {}).get('id'),
-            'version': door_data.get('attributes', {}).get('version', 0)
-          }
-          doors.append(door)
-        logger.info(f"✓ Retrieved {len(doors)} doors")
-        return doors
-      logger.warning("✗ No doors data in response")
+        group_data = result['data']
+        if isinstance(group_data, list):
+          if len(group_data) > 0:
+            group_data = group_data[0]
+          else:
+            logger.warning(f"✗ Group {group_id} not found (empty list)")
+            return None
+        group = {
+          'id': group_data.get('id'),
+          'name': group_data.get('attributes', {}).get('name'),
+          'description': group_data.get('attributes', {}).get('description'),
+          'version': group_data.get('attributes', {}).get('version', 0)
+        }
+        logger.info(f"✓ Retrieved group {group_id}")
+        return group
+      logger.warning(f"✗ Group {group_id} not found")
+      return None
+    except Exception as e:
+      logger.error(f"✗ Error getting group {group_id}: {e}")
+      return None
+
+  def create_group(self, group_data):
+    """Create a new group (thread-safe)"""
+    logger.info(f"=== CREATING GROUP: {group_data.get('name')} ===")
+    try:
+      result = self._run_in_websocket_thread('group.create', {
+        'attributes': group_data
+      })
+      if result and 'data' in result:
+        group = {
+          'id': result['data'].get('id'),
+          'name': result['data'].get('attributes', {}).get('name'),
+          'description': result['data'].get('attributes', {}).get('description'),
+          'version': result['data'].get('attributes', {}).get('version', 0)
+        }
+        logger.info(f"✓ Group created successfully with ID: {group['id']}")
+        return True, group
+      else:
+        logger.error("✗ Group creation failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error creating group: {e}")
+      return False, {'error': str(e)}
+
+  def update_group(self, group_id, group_data):
+    """Update an existing group (thread-safe)"""
+    logger.info(f"=== UPDATING GROUP: {group_id} ===")
+    try:
+      result = self._run_in_websocket_thread('group.update', {
+        'group_id': int(group_id),
+        'attributes': group_data
+      })
+      if result and 'data' in result:
+        group = {
+          'id': result['data'].get('id'),
+          'name': result['data'].get('attributes', {}).get('name'),
+          'description': result['data'].get('attributes', {}).get('description'),
+          'version': result['data'].get('attributes', {}).get('version', 0)
+        }
+        logger.info(f"✓ Group {group_id} updated successfully")
+        return True, group
+      else:
+        logger.error(f"✗ Group update failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error updating group {group_id}: {e}")
+      return False, {'error': str(e)}
+
+  def delete_group(self, group_id):
+    """Delete a group (thread-safe)"""
+    logger.info(f"=== DELETING GROUP: {group_id} ===")
+    try:
+      result = self._run_in_websocket_thread('group.delete', {'group_id': int(group_id)})
+      if result is not None:
+        logger.info(f"✓ Group {group_id} deleted successfully")
+        return True, result
+      else:
+        logger.error(f"✗ Group deletion failed: result is None")
+        return False, {'error': 'Server returned no response'}
+    except Exception as e:
+      logger.error(f"✗ Error deleting group {group_id}: {e}")
+      return False, {'error': str(e)}
+
+  def get_group_memberships(self, group_id):
+    """Get all user-group memberships for a group (thread-safe)"""
+    logger.info(f"=== GETTING MEMBERSHIPS FOR GROUP: {group_id} ===")
+    try:
+      # The server doesn't support filtering by group_id in membership.read, so fetch all and filter
+      result = self._run_in_websocket_thread('user-group-membership.read', {'membership_id': 0})
+      if result and 'data' in result:
+        memberships = []
+        for m in result['data']:
+          if m.get('attributes', {}).get('group_id') == group_id:
+            membership = {
+              'id': m.get('id'),
+              'user_id': m.get('attributes', {}).get('user_id'),
+              'group_id': m.get('attributes', {}).get('group_id'),
+              'rank': m.get('attributes', {}).get('rank'),
+              'timestamp': m.get('attributes', {}).get('timestamp')
+            }
+            memberships.append(membership)
+        logger.info(f"✓ Retrieved {len(memberships)} memberships for group {group_id}")
+        return memberships
+      logger.warning(f"✗ No memberships found for group {group_id}")
       return []
     except Exception as e:
-      logger.error(f"✗ Error getting doors: {e}")
+      logger.error(f"✗ Error getting memberships for group {group_id}: {e}")
       return []
+
+  def get_group_schedules(self, group_id):
+    """Get all schedules mapped to a group (thread-safe)"""
+    logger.info(f"=== GETTING SCHEDULES FOR GROUP: {group_id} ===")
+    try:
+      # Fetch all schedules and filter those mapped to this group
+      schedules = self.get_schedules()
+      group_schedules = []
+      for schedule in schedules:
+        # For each schedule, check if any mapping includes this group
+        schedule_detail = self.get_schedule(schedule['id'])
+        for mapping in schedule_detail.get('mapping', []):
+          if group_id in mapping.get('groups', []):
+            group_schedules.append(schedule)
+            break
+      logger.info(f"✓ Retrieved {len(group_schedules)} schedules for group {group_id}")
+      return group_schedules
+    except Exception as e:
+      logger.error(f"✗ Error getting schedules for group {group_id}: {e}")
+      return []
+
+  def get_membership(self, membership_id):
+    """Get a specific user-group membership by ID (thread-safe)"""
+    logger.info(f"=== GETTING MEMBERSHIP: {membership_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user-group-membership.read', {'membership_id': int(membership_id)})
+      if result and 'data' in result:
+        m = result['data']
+        membership = {
+          'id': m.get('id'),
+          'rank': m.get('attributes', {}).get('rank'),
+          'timestamp': m.get('attributes', {}).get('timestamp'),
+          'group_id': None,
+          'user_id': None
+        }
+        # Parse relationships for group_id and user_id
+        group_rel = m.get('relationships', {}).get('group', {}).get('data', {})
+        user_rel = m.get('relationships', {}).get('user', {}).get('data', {})
+        if group_rel:
+          membership['group_id'] = group_rel.get('id')
+        if user_rel:
+          membership['user_id'] = user_rel.get('id')
+        logger.info(f"✓ Retrieved membership {membership_id}: {membership}")
+        return membership
+      logger.warning(f"✗ Membership {membership_id} not found")
+      return None
+    except Exception as e:
+      logger.error(f"✗ Error getting membership {membership_id}: {e}")
+      return None
+
+  def create_membership(self, user_id, group_id, rank):
+    """Create a new user-group membership (thread-safe)"""
+    logger.info(f"=== CREATING MEMBERSHIP: user {user_id}, group {group_id}, rank {rank} ===")
+    try:
+      result = self._run_in_websocket_thread('user-group-membership.create', {
+        'attributes': {
+          'user_id': int(user_id),
+          'group_id': int(group_id),
+          'rank': int(rank)
+        }
+      })
+      if result and 'data' in result:
+        logger.info(f"✓ Membership created: {result['data']}")
+        return True, result['data']
+      else:
+        logger.error("✗ Membership creation failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error creating membership: {e}")
+      return False, {'error': str(e)}
+
+  def delete_membership(self, membership_id):
+    """Delete a user-group membership (thread-safe)"""
+    logger.info(f"=== DELETING MEMBERSHIP: {membership_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user-group-membership.delete', {'membership_id': int(membership_id)})
+      if result is not None:
+        logger.info(f"✓ Membership {membership_id} deleted successfully")
+        return True, result
+      else:
+        logger.error(f"✗ Membership deletion failed: result is None")
+        return False, {'error': 'Server returned no response'}
+    except Exception as e:
+      logger.error(f"✗ Error deleting membership {membership_id}: {e}")
+      return False, {'error': str(e)}
 
 leosac_client = LeosacWebSocketService()

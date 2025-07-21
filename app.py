@@ -20,6 +20,7 @@ from utils.rank_converter import convert_rank_int_to_string, convert_rank_string
 from routes.users import users_bp
 from routes.credentials import credentials_bp
 from routes.schedules import schedules_bp
+from routes.groups import groups_bp
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +42,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(credentials_bp)
 app.register_blueprint(schedules_bp)
+app.register_blueprint(groups_bp)
 
 # After login_manager is created and initialized, add the user_loader function:
 @login_manager.user_loader

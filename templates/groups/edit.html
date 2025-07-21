@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Group - Leosac Web GUI{% endblock %}
+{% block page_title %}Edit Group{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Edit Group: {{ group.name }}</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST" id="group-edit-form">
+            <div class="form-group">
+              <label for="name">Group Name *</label>
+              <input type="text" class="form-control" id="name" name="name" 
+                     value="{{ request.form.name or group.name }}"
+                     placeholder="Enter group name (3-50 characters)" 
+                     required minlength="3" maxlength="50">
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="2"
+                        placeholder="Enter group description (optional)">{{ request.form.description or group.description }}</textarea>
+            </div>
+
+            <hr>
+
+            <!-- Add User to Group Form (client-side only) -->
+            <div class="card mb-4">
+              <div class="card-header">
+                <h6 class="mb-0">Add User to Group</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="user_id">Select User</label>
+                      <select class="form-control" id="user_id_select">
+                        <option value="">Choose a user...</option>
+                        {% for user in all_users %}
+                          <option value="{{ user.id }}" data-username="{{ user.username }}" data-firstname="{{ user.firstname }}" data-lastname="{{ user.lastname }}">
+                            {{ user.firstname }} {{ user.lastname }} ({{ user.username }})
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label for="rank">Rank</label>
+                      <input type="number" class="form-control" id="rank_input" value="0" min="0" max="255">
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="form-group">
+                      <label>&nbsp;</label>
+                      <button type="button" class="btn btn-primary btn-block" id="add_user_btn">
+                        <i class="fas fa-plus"></i> Add User
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Members List -->
+            <h5>Current Group Members</h5>
+            <div class="table-responsive">
+              <table class="table table-hover" id="members_table">
+                <thead class="thead-light">
+                  <tr>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Rank</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="members_tbody">
+                  {% for membership in group.memberships %}
+                  <tr data-user-id="{{ membership.user_id }}">
+                    <td>{{ membership.user_id }}</td>
+                    <td>{{ membership.firstname }} {{ membership.lastname }}</td>
+                    <td>{{ membership.username }}</td>
+                    <td>{{ membership.rank }}</td>
+                    <td>
+                      <button type="button" class="btn btn-danger btn-sm remove-user-btn">
+                        <i class="fas fa-trash"></i> Remove
+                      </button>
+                    </td>
+                    <input type="hidden" name="members[]" value="{{ membership.user_id }}:{{ membership.rank }}">
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-group mt-4">
+              <button type="submit" class="btn btn-success btn-lg btn-block">Update Group</button>
+              <a href="{{ url_for('groups.group_detail', group_id=group.id) }}" class="btn btn-secondary btn-block">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Local list of members (user_id, rank, username, firstname, lastname)
+let members = [
+  {% for membership in group.memberships %}
+    {user_id: {{ membership.user_id }}, rank: {{ membership.rank }}, username: "{{ membership.username }}", firstname: "{{ membership.firstname }}", lastname: "{{ membership.lastname }}"},
+  {% endfor %}
+];
+
+function renderMembersTable() {
+  const tbody = document.getElementById('members_tbody');
+  tbody.innerHTML = '';
+  members.forEach(function(member) {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-user-id', member.user_id);
+    tr.innerHTML = `
+      <td>${member.user_id}</td>
+      <td>${member.firstname} ${member.lastname}</td>
+      <td>${member.username}</td>
+      <td>${member.rank}</td>
+      <td><button type="button" class="btn btn-danger btn-sm remove-user-btn"><i class="fas fa-trash"></i> Remove</button></td>
+      <input type="hidden" name="members[]" value="${member.user_id}:${member.rank}">
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Remove user from members list
+function removeUserFromMembers(user_id) {
+  members = members.filter(m => m.user_id != user_id);
+  renderMembersTable();
+  updateUserDropdown();
+}
+
+// Update the user dropdown to exclude already-added members
+function updateUserDropdown() {
+  const select = document.getElementById('user_id_select');
+  const options = select.querySelectorAll('option');
+  options.forEach(option => {
+    if (!option.value) return;
+    const user_id = option.value;
+    const alreadyAdded = members.some(m => m.user_id == user_id);
+    option.disabled = alreadyAdded;
+    if (alreadyAdded && select.value == user_id) {
+      select.value = '';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  renderMembersTable();
+  updateUserDropdown();
+
+  document.getElementById('add_user_btn').addEventListener('click', function() {
+    const select = document.getElementById('user_id_select');
+    const user_id = select.value;
+    if (!user_id) return;
+    const selectedOption = select.options[select.selectedIndex];
+    const username = selectedOption.getAttribute('data-username');
+    const firstname = selectedOption.getAttribute('data-firstname');
+    const lastname = selectedOption.getAttribute('data-lastname');
+    const rank = document.getElementById('rank_input').value || 0;
+    if (members.some(m => m.user_id == user_id)) return;
+    members.push({user_id: user_id, rank: rank, username: username, firstname: firstname, lastname: lastname});
+    renderMembersTable();
+    updateUserDropdown();
+    select.value = '';
+    document.getElementById('rank_input').value = 0;
+  });
+
+  document.getElementById('members_tbody').addEventListener('click', function(e) {
+    if (e.target.closest('.remove-user-btn')) {
+      const tr = e.target.closest('tr');
+      const user_id = tr.getAttribute('data-user-id');
+      removeUserFromMembers(user_id);
+    }
+  });
+});
+</script>
+{% endblock %} 

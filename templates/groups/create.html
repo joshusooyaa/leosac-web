@@ -1,32 +1,42 @@
 {% extends "base.html" %}
 
+{% block title %}Create Group - Leosac Web GUI{% endblock %}
+{% block page_title %}Create Group{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Create New Group</h3>
+          <h3 class="card-title">Create Group</h3>
         </div>
         <div class="card-body">
           <form method="POST">
             <div class="form-group">
-              <label for="name">Group Name</label>
-              <input type="text" class="form-control" id="name" name="name" required>
+              <label for="name">Group Name *</label>
+              <input type="text" class="form-control" id="name" name="name" 
+                     value="{{ request.form.name or '' }}"
+                     placeholder="Enter group name (3-50 characters)" 
+                     required minlength="3" maxlength="50">
+              <small class="form-text text-muted">
+                Group name must be between 3 and 50 characters long.
+              </small>
             </div>
             <div class="form-group">
               <label for="description">Description</label>
-              <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+              <textarea class="form-control" id="description" name="description" 
+                        rows="3" placeholder="Enter group description (optional)">{{ request.form.description or '' }}</textarea>
+              <small class="form-text text-muted">
+                Optional description for this group.
+              </small>
             </div>
-            <div class="form-group">
-              <label for="parent_group">Parent Group (Optional)</label>
-              <select class="form-control" id="parent_group" name="parent_group">
-                <option value="">No Parent Group</option>
-                <!-- Groups will be populated dynamically -->
-              </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Create Group</button>
-            <a href="{{ url_for('groups_list') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Create Group
+            </button>
+            <a href="{{ url_for('groups.groups_list') }}" class="btn btn-secondary">
+              <i class="fas fa-times"></i> Cancel
+            </a>
           </form>
         </div>
       </div>
