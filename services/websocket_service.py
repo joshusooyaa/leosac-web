@@ -1752,4 +1752,153 @@ class LeosacWebSocketService:
       logger.error(f"Traceback: {traceback.format_exc()}")
       return []
 
+  def get_access_point(self, access_point_id):
+    """Get a specific access point by ID (thread-safe)"""
+    logger.info(f"=== GETTING ACCESS POINT {access_point_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for access point {access_point_id}: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return None
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return None
+      
+      # Send access point read request
+      logger.debug(f"Sending access_point.read request with access_point_id={access_point_id}")
+      result = self._run_in_websocket_thread('access_point.read', {'access_point_id': access_point_id})
+      
+      logger.debug(f"Access point {access_point_id} read result: {result}")
+      
+      if result and 'data' in result:
+        access_point_data = result.get('data')
+        if isinstance(access_point_data, list) and len(access_point_data) > 0:
+          access_point_data = access_point_data[0]
+        elif not access_point_data:
+          logger.warning(f"✗ Access point {access_point_id} not found (empty data)")
+          return None
+        
+        logger.info(f"✓ Retrieved access point {access_point_id}")
+        logger.debug(f"Raw access point data: {access_point_data}")
+        return access_point_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get access point {access_point_id}: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return None
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting access point {access_point_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return None
+
+  def create_access_point(self, access_point_data):
+    """Create a new access point (thread-safe)"""
+    logger.info("=== CREATING ACCESS POINT ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare access point attributes
+      attributes = {
+        'alias': access_point_data.get('alias', ''),
+        'description': access_point_data.get('description', ''),
+        'controller-module': access_point_data.get('controller_module', 'LEOSAC-BUILTIN-ACCESS-POINT')
+      }
+      
+      # Send access point create request
+      result = self._run_in_websocket_thread('access_point.create', {'attributes': attributes})
+      
+      if result and 'data' in result:
+        logger.info("✓ Access point created successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to create access point: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error creating access point: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_access_point(self, access_point_id, access_point_data):
+    """Update an existing access point (thread-safe)"""
+    logger.info(f"=== UPDATING ACCESS POINT {access_point_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare access point attributes
+      attributes = {}
+      if 'alias' in access_point_data:
+        attributes['alias'] = access_point_data['alias']
+      if 'description' in access_point_data:
+        attributes['description'] = access_point_data['description']
+      if 'controller_module' in access_point_data:
+        attributes['controller-module'] = access_point_data['controller_module']
+      
+      # Send access point update request
+      result = self._run_in_websocket_thread('access_point.update', {
+        'access_point_id': access_point_id,
+        'attributes': attributes
+      })
+      
+      if result and 'data' in result:
+        logger.info(f"✓ Access point {access_point_id} updated successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to update access point {access_point_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error updating access point {access_point_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def delete_access_point(self, access_point_id):
+    """Delete an access point (thread-safe)"""
+    logger.info(f"=== DELETING ACCESS POINT {access_point_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Send access point delete request
+      result = self._run_in_websocket_thread('access_point.delete', {'access_point_id': access_point_id})
+      
+      if result is not None:  # Delete operations typically return None on success
+        logger.info(f"✓ Access point {access_point_id} deleted successfully")
+        return True, result
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to delete access point {access_point_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error deleting access point {access_point_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
 leosac_client = LeosacWebSocketService()

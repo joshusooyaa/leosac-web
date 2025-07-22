@@ -10,33 +10,104 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Access Point List</h5>
-                    <a href="{{ url_for('access_points_create') }}" class="btn btn-primary">
+                    <a href="{{ url_for('access_points.access_points_create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Access Point
                     </a>
                 </div>
                 <div class="card-body">
+                    {% if access_points %}
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
-                                    <th>Door</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Controller Module</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for ap in access_points %}
                                 <tr>
-                                    <td colspan="6" class="text-center">Access point list will be implemented here</td>
+                                    <td>{{ ap.id }}</td>
+                                    <td>
+                                        <a href="{{ url_for('access_points.access_point_detail', access_point_id=ap.id) }}">
+                                            {{ ap.attributes.alias }}
+                                        </a>
+                                    </td>
+                                    <td>{{ ap.attributes.description or 'No description' }}</td>
+                                    <td>
+                                        <span class="badge badge-info">{{ ap.attributes['controller-module'] or 'Unknown' }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('access_points.access_point_detail', access_point_id=ap.id) }}" 
+                                               class="btn btn-sm btn-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('access_points.access_point_edit', access_point_id=ap.id) }}" 
+                                               class="btn btn-sm btn-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="confirmDelete({{ ap.id }}, '{{ ap.attributes.alias }}')" 
+                                                    title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-dungeon fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No access points found</h5>
+                        <p class="text-muted">Create your first access point to get started.</p>
+                        <a href="{{ url_for('access_points.access_points_create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add First Access Point
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the access point "<span id="accessPointName"></span>"?
+                <br><br>
+                <strong>Warning:</strong> This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete Access Point</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(accessPointId, accessPointName) {
+    document.getElementById('accessPointName').textContent = accessPointName;
+    document.getElementById('deleteForm').action = "{{ url_for('access_points.access_point_delete', access_point_id=0) }}".replace('0', accessPointId);
+    $('#deleteModal').modal('show');
+}
+</script>
 {% endblock %} 

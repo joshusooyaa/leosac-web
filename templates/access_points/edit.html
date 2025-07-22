@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Create Access Point - Leosac Web GUI{% endblock %}
-{% block page_title %}Create Access Point{% endblock %}
+{% block title %}Edit Access Point - Leosac Web GUI{% endblock %}
+{% block page_title %}Edit Access Point{% endblock %}
 
 {% block content %}
 <div class="col-lg-12 col-md-12">
@@ -10,7 +10,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-plus"></i> Create New Access Point
+                        <i class="fas fa-edit"></i> Edit Access Point
                     </h5>
                 </div>
                 <div class="card-body">
@@ -18,7 +18,7 @@
                         <div class="form-group">
                             <label for="alias">Access Point Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="alias" name="alias" 
-                                   value="{{ access_point_data.alias if access_point_data else '' }}" 
+                                   value="{{ access_point.attributes.alias }}" 
                                    required placeholder="Enter access point name">
                             <small class="form-text text-muted">A unique name for this access point</small>
                         </div>
@@ -26,7 +26,7 @@
                         <div class="form-group">
                             <label for="description">Description</label>
                             <textarea class="form-control" id="description" name="description" rows="3" 
-                                      placeholder="Optional description">{{ access_point_data.description if access_point_data else '' }}</textarea>
+                                      placeholder="Optional description">{{ access_point.attributes.description or '' }}</textarea>
                             <small class="form-text text-muted">Optional description of the access point's location or purpose</small>
                         </div>
                         
@@ -34,7 +34,7 @@
                             <label for="controller_module">Controller Module</label>
                             <select class="form-control" id="controller_module" name="controller_module">
                                 <option value="LEOSAC-BUILTIN-ACCESS-POINT" 
-                                        {% if not access_point_data or access_point_data.controller_module == 'LEOSAC-BUILTIN-ACCESS-POINT' %}selected{% endif %}>
+                                        {% if access_point.attributes['controller-module'] == 'LEOSAC-BUILTIN-ACCESS-POINT' %}selected{% endif %}>
                                     LEOSAC-BUILTIN-ACCESS-POINT
                                 </option>
                                 <!-- Additional controller modules can be added here as they become available -->
@@ -52,9 +52,9 @@
                         
                         <div class="form-group">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Create Access Point
+                                <i class="fas fa-save"></i> Update Access Point
                             </button>
-                            <a href="{{ url_for('access_points.access_points_list') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('access_points.access_point_detail', access_point_id=access_point.id) }}" class="btn btn-secondary">
                                 <i class="fas fa-times"></i> Cancel
                             </a>
                         </div>

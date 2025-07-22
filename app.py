@@ -22,6 +22,7 @@ from routes.credentials import credentials_bp
 from routes.schedules import schedules_bp
 from routes.groups import groups_bp
 from routes.doors import doors_bp
+from routes.access_points import access_points_bp
 
 # Load environment variables
 load_dotenv()
@@ -45,6 +46,7 @@ app.register_blueprint(credentials_bp)
 app.register_blueprint(schedules_bp)
 app.register_blueprint(groups_bp)
 app.register_blueprint(doors_bp)
+app.register_blueprint(access_points_bp)
 
 # After login_manager is created and initialized, add the user_loader function:
 @login_manager.user_loader
