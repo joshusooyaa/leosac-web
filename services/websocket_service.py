@@ -1901,4 +1901,215 @@ class LeosacWebSocketService:
       logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
+  # Wiegand Reader Methods
+  def get_wiegand_readers(self):
+    """Get all Wiegand readers (thread-safe)"""
+    logger.info("=== GETTING WIEGAND READERS ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for Wiegand readers: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return []
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return []
+      
+      # Send Wiegand reader list request
+      logger.debug("Sending wiegand-reader.read request with reader_id=0")
+      result = self._run_in_websocket_thread('wiegand-reader.read', {'reader_id': 0})
+      
+      logger.debug(f"Wiegand readers read result: {result}")
+      
+      if result and 'data' in result:
+        wiegand_readers_data = result.get('data', [])
+        logger.info(f"✓ Retrieved {len(wiegand_readers_data)} Wiegand readers")
+        logger.debug(f"Raw Wiegand readers data: {wiegand_readers_data}")
+        return wiegand_readers_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get Wiegand readers: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return []
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting Wiegand readers: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return []
+
+  def get_wiegand_reader(self, reader_id):
+    """Get a specific Wiegand reader by ID (thread-safe)"""
+    logger.info(f"=== GETTING WIEGAND READER {reader_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for Wiegand reader {reader_id}: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return None
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return None
+      
+      # Send Wiegand reader read request
+      logger.debug(f"Sending wiegand-reader.read request with reader_id={reader_id}")
+      result = self._run_in_websocket_thread('wiegand-reader.read', {'reader_id': reader_id})
+      
+      logger.debug(f"Wiegand reader {reader_id} read result: {result}")
+      
+      if result and 'data' in result:
+        wiegand_reader_data = result.get('data')
+        if isinstance(wiegand_reader_data, list) and len(wiegand_reader_data) > 0:
+          wiegand_reader_data = wiegand_reader_data[0]
+        elif not wiegand_reader_data:
+          logger.warning(f"✗ Wiegand reader {reader_id} not found (empty data)")
+          return None
+        
+        logger.info(f"✓ Retrieved Wiegand reader {reader_id}")
+        logger.debug(f"Raw Wiegand reader data: {wiegand_reader_data}")
+        return wiegand_reader_data
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get Wiegand reader {reader_id}: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return None
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting Wiegand reader {reader_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return None
+
+  def create_wiegand_reader(self, wiegand_reader_data):
+    """Create a new Wiegand reader (thread-safe)"""
+    logger.info("=== CREATING WIEGAND READER ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare Wiegand reader attributes
+      attributes = {
+        'alias': wiegand_reader_data.get('alias', ''),
+        'description': wiegand_reader_data.get('description', ''),
+        'mode': wiegand_reader_data.get('mode', 'SIMPLE_WIEGAND'),
+        'pin_timeout': wiegand_reader_data.get('pin_timeout', 2500),
+        'pin_key_end': wiegand_reader_data.get('pin_key_end', '#')
+      }
+      
+      # Add hardware device IDs if provided
+      if wiegand_reader_data.get('gpio_high_id'):
+        attributes['gpio_high_id'] = wiegand_reader_data['gpio_high_id']
+      if wiegand_reader_data.get('gpio_low_id'):
+        attributes['gpio_low_id'] = wiegand_reader_data['gpio_low_id']
+      if wiegand_reader_data.get('green_led_id'):
+        attributes['green_led_id'] = wiegand_reader_data['green_led_id']
+      if wiegand_reader_data.get('buzzer_id'):
+        attributes['buzzer_id'] = wiegand_reader_data['buzzer_id']
+      
+      # Send Wiegand reader create request
+      result = self._run_in_websocket_thread('wiegand-reader.create', {'attributes': attributes})
+      
+      if result and 'data' in result:
+        logger.info("✓ Wiegand reader created successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to create Wiegand reader: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error creating Wiegand reader: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_wiegand_reader(self, reader_id, wiegand_reader_data):
+    """Update an existing Wiegand reader (thread-safe)"""
+    logger.info(f"=== UPDATING WIEGAND READER {reader_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Prepare Wiegand reader attributes
+      attributes = {}
+      if 'alias' in wiegand_reader_data:
+        attributes['alias'] = wiegand_reader_data['alias']
+      if 'description' in wiegand_reader_data:
+        attributes['description'] = wiegand_reader_data['description']
+      if 'mode' in wiegand_reader_data:
+        attributes['mode'] = wiegand_reader_data['mode']
+      if 'pin_timeout' in wiegand_reader_data:
+        attributes['pin_timeout'] = wiegand_reader_data['pin_timeout']
+      if 'pin_key_end' in wiegand_reader_data:
+        attributes['pin_key_end'] = wiegand_reader_data['pin_key_end']
+      if 'gpio_high_id' in wiegand_reader_data:
+        attributes['gpio_high_id'] = wiegand_reader_data['gpio_high_id']
+      if 'gpio_low_id' in wiegand_reader_data:
+        attributes['gpio_low_id'] = wiegand_reader_data['gpio_low_id']
+      if 'green_led_id' in wiegand_reader_data:
+        attributes['green_led_id'] = wiegand_reader_data['green_led_id']
+      if 'buzzer_id' in wiegand_reader_data:
+        attributes['buzzer_id'] = wiegand_reader_data['buzzer_id']
+      
+      # Send Wiegand reader update request
+      result = self._run_in_websocket_thread('wiegand-reader.update', {
+        'reader_id': reader_id,
+        'attributes': attributes
+      })
+      
+      if result and 'data' in result:
+        logger.info(f"✓ Wiegand reader {reader_id} updated successfully")
+        return True, result.get('data', {})
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to update Wiegand reader {reader_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error updating Wiegand reader {reader_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def delete_wiegand_reader(self, reader_id):
+    """Delete a Wiegand reader (thread-safe)"""
+    logger.info(f"=== DELETING WIEGAND READER {reader_id} ===")
+    try:
+      auth_state = self.get_auth_state()
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return False, {'error': 'WebSocket not connected'}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return False, {'error': 'Not authenticated'}
+      
+      # Send Wiegand reader delete request
+      result = self._run_in_websocket_thread('wiegand-reader.delete', {'reader_id': reader_id})
+      
+      if result is not None:  # Delete operations typically return None on success
+        logger.info(f"✓ Wiegand reader {reader_id} deleted successfully")
+        return True, result
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to delete Wiegand reader {reader_id}: {error_msg}")
+        return False, {'error': error_msg}
+        
+    except Exception as e:
+      logger.error(f"✗ Error deleting Wiegand reader {reader_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
 leosac_client = LeosacWebSocketService()

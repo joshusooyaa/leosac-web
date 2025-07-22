@@ -305,12 +305,18 @@
                         <span>Doors</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('access_points.access_points_list') }}">
-                        <i class="fas fa-fw fa-dungeon"></i>
-                        <span>Access Points</span>
-                    </a>
-                </li>
+                            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('access_points.access_points_list') }}">
+                    <i class="fas fa-fw fa-dungeon"></i>
+                    <span>Access Points</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('wiegand_readers.wiegand_readers_list') }}">
+                    <i class="fas fa-fw fa-credit-card"></i>
+                    <span>Wiegand Readers</span>
+                </a>
+            </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('updates') }}">
                         <i class="fas fa-fw fa-cubes"></i>

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Create Wiegand Reader - Leosac Web GUI{% endblock %}
+{% block page_title %}Create Wiegand Reader{% endblock %}
+
+{% block content %}
+<div class="col-lg-12 col-md-12">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus"></i> Create New Wiegand Reader
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="alias">Reader Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="alias" name="alias" 
+                                   value="{{ wiegand_reader_data.alias if wiegand_reader_data else '' }}" 
+                                   required placeholder="Enter Wiegand reader name">
+                            <small class="form-text text-muted">A unique name for this Wiegand reader</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      placeholder="Optional description">{{ wiegand_reader_data.description if wiegand_reader_data else '' }}</textarea>
+                            <small class="form-text text-muted">Optional description of the reader's location or purpose</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="mode">Operation Mode</label>
+                            <select class="form-control" id="mode" name="mode">
+                                <option value="SIMPLE_WIEGAND" 
+                                        {% if not wiegand_reader_data or wiegand_reader_data.mode == 'SIMPLE_WIEGAND' %}selected{% endif %}>
+                                    SIMPLE_WIEGAND - Card reading only
+                                </option>
+                                <option value="WIEGAND_PIN_4BITS" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_PIN_4BITS' %}selected{% endif %}>
+                                    WIEGAND_PIN_4BITS - 4-bit PIN entry
+                                </option>
+                                <option value="WIEGAND_PIN_8BITS" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_PIN_8BITS' %}selected{% endif %}>
+                                    WIEGAND_PIN_8BITS - 8-bit PIN entry
+                                </option>
+                                <option value="WIEGAND_PIN_BUFFERED" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_PIN_BUFFERED' %}selected{% endif %}>
+                                    WIEGAND_PIN_BUFFERED - Buffered PIN entry
+                                </option>
+                                <option value="WIEGAND_CARD_PIN_4BITS" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_CARD_PIN_4BITS' %}selected{% endif %}>
+                                    WIEGAND_CARD_PIN_4BITS - Card + 4-bit PIN
+                                </option>
+                                <option value="WIEGAND_CARD_PIN_8BITS" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_CARD_PIN_8BITS' %}selected{% endif %}>
+                                    WIEGAND_CARD_PIN_8BITS - Card + 8-bit PIN
+                                </option>
+                                <option value="WIEGAND_CARD_PIN_BUFFERED" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'WIEGAND_CARD_PIN_BUFFERED' %}selected{% endif %}>
+                                    WIEGAND_CARD_PIN_BUFFERED - Card + buffered PIN
+                                </option>
+                                <option value="AUTODETECT" 
+                                        {% if wiegand_reader_data and wiegand_reader_data.mode == 'AUTODETECT' %}selected{% endif %}>
+                                    AUTODETECT - Automatic detection
+                                </option>
+                            </select>
+                            <small class="form-text text-muted">The operation mode for this Wiegand reader</small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="pin_timeout">PIN Timeout (ms)</label>
+                                    <input type="number" class="form-control" id="pin_timeout" name="pin_timeout" 
+                                           value="{{ wiegand_reader_data.pin_timeout if wiegand_reader_data else 2500 }}" 
+                                           min="100" max="10000" step="100">
+                                    <small class="form-text text-muted">Timeout for PIN entry in milliseconds</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="pin_key_end">PIN End Key</label>
+                                    <input type="text" class="form-control" id="pin_key_end" name="pin_key_end" 
+                                           value="{{ wiegand_reader_data.pin_key_end if wiegand_reader_data else '#' }}" 
+                                           maxlength="1">
+                                    <small class="form-text text-muted">Key that ends PIN entry (usually #)</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        <h6>Hardware Devices (Optional)</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="gpio_high_id">GPIO High ID</label>
+                                    <input type="text" class="form-control" id="gpio_high_id" name="gpio_high_id" 
+                                           value="{{ wiegand_reader_data.gpio_high_id if wiegand_reader_data else '' }}" 
+                                           placeholder="UUID of GPIO high pin">
+                                    <small class="form-text text-muted">Device ID for the high data line GPIO</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="gpio_low_id">GPIO Low ID</label>
+                                    <input type="text" class="form-control" id="gpio_low_id" name="gpio_low_id" 
+                                           value="{{ wiegand_reader_data.gpio_low_id if wiegand_reader_data else '' }}" 
+                                           placeholder="UUID of GPIO low pin">
+                                    <small class="form-text text-muted">Device ID for the low data line GPIO</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="green_led_id">Green LED ID</label>
+                                    <input type="text" class="form-control" id="green_led_id" name="green_led_id" 
+                                           value="{{ wiegand_reader_data.green_led_id if wiegand_reader_data else '' }}" 
+                                           placeholder="UUID of green LED">
+                                    <small class="form-text text-muted">Device ID for the success indicator LED</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="buzzer_id">Buzzer ID</label>
+                                    <input type="text" class="form-control" id="buzzer_id" name="buzzer_id" 
+                                           value="{{ wiegand_reader_data.buzzer_id if wiegand_reader_data else '' }}" 
+                                           placeholder="UUID of buzzer">
+                                    <small class="form-text text-muted">Device ID for the audio feedback buzzer</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Note:</strong> Wiegand readers are hardware devices that read RFID cards and can optionally accept PIN codes. 
+                                They use the Wiegand protocol to communicate card data to the access control system.
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Create Wiegand Reader
+                            </button>
+                            <a href="{{ url_for('wiegand_readers.wiegand_readers_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
