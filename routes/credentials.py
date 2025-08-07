@@ -48,7 +48,7 @@ def credentials_rfid_create():
                 return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
             try:
                 nb_bits = int(credential_data['nb_bits'])
-                if nb_bits <= 0 or nb_bits % 8 != 0:
+                if nb_bits <= 0:
                     flash('Number of bits must be positive and divisible by 8', 'error')
                     return render_template('credentials/rfid_create.html', credential_data=credential_data, users=[])
             except ValueError:

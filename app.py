@@ -3,7 +3,7 @@ import json
 import uuid
 import asyncio
 import websockets
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from routes.auth import auth_bp
 from models.user import LeosacUser
