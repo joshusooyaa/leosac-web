@@ -103,7 +103,7 @@
                         {% if mapping.users %}
                           <div class="border rounded p-2">
                             {% for user_id in mapping.users %}
-                              <div><i class="fas fa-user"></i> User ID: {{ user_id }}</div>
+                              <div><i class="fas fa-user"></i> {{ user_labels.get(user_id, 'User ' ~ user_id) }}</div>
                             {% endfor %}
                           </div>
                         {% else %}
@@ -115,7 +115,7 @@
                         {% if mapping.groups %}
                           <div class="border rounded p-2">
                             {% for group_id in mapping.groups %}
-                              <div><i class="fas fa-users"></i> Group ID: {{ group_id }}</div>
+                              <div><i class="fas fa-users"></i> {{ group_labels.get(group_id, 'Group ' ~ group_id) }}</div>
                             {% endfor %}
                           </div>
                         {% else %}
@@ -129,7 +129,7 @@
                         {% if mapping.credentials %}
                           <div class="border rounded p-2">
                             {% for cred_id in mapping.credentials %}
-                              <div><i class="fas fa-key"></i> Credential ID: {{ cred_id }}</div>
+                              <div><i class="fas fa-key"></i> {{ credential_labels.get(cred_id, 'Credential ' ~ cred_id) }}</div>
                             {% endfor %}
                           </div>
                         {% else %}
@@ -141,7 +141,7 @@
                         {% if mapping.doors %}
                           <div class="border rounded p-2">
                             {% for door_id in mapping.doors %}
-                              <div><i class="fas fa-door-open"></i> Door ID: {{ door_id }}</div>
+                              <div><i class="fas fa-door-open"></i> {{ door_labels.get(door_id, 'Door ' ~ door_id) }}</div>
                             {% endfor %}
                           </div>
                         {% else %}

@@ -140,7 +140,48 @@ def schedule_view(schedule_id):
         if schedule:
             if schedule.get('timeframes'):
                 schedule['timeframes'] = group_timeframes_for_display(schedule['timeframes'])
-            return render_template('schedules/view.html', schedule=schedule)
+
+            # Build label maps for display
+            try:
+                users_list = leosac_client.get_users()
+            except Exception:
+                users_list = []
+            user_labels = {
+                u['id']: f"{u.get('username','User')} ({u.get('firstname','')} {u.get('lastname','')}).strip()".replace('()','')
+                for u in users_list if isinstance(u, dict) and u.get('id') is not None
+            }
+
+            try:
+                groups_list = leosac_client.get_groups()
+            except Exception:
+                groups_list = []
+            group_labels = {g['id']: g.get('name','Group') for g in groups_list if isinstance(g, dict) and g.get('id') is not None}
+
+            try:
+                credentials_list = leosac_client.get_credentials()
+            except Exception:
+                credentials_list = []
+            credential_labels = {
+                c['id']: f"{c.get('alias','Credential')} ({c.get('type','')})".strip()
+                for c in credentials_list if isinstance(c, dict) and c.get('id') is not None
+            }
+
+            try:
+                doors_list = leosac_client.get_doors()
+            except Exception:
+                doors_list = []
+            def _door_alias(d):
+                if not isinstance(d, dict):
+                    return 'Door'
+                attrs = d.get('attributes', {}) or {}
+                return attrs.get('alias') or d.get('alias') or 'Door'
+            door_labels = {d.get('id'): _door_alias(d) for d in doors_list if d.get('id') is not None}
+
+            return render_template('schedules/view.html', schedule=schedule,
+                                   user_labels=user_labels,
+                                   group_labels=group_labels,
+                                   credential_labels=credential_labels,
+                                   door_labels=door_labels)
         else:
             flash('Schedule not found.', 'error')
             return redirect(url_for('schedules.schedules_list'))
