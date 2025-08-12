@@ -24,6 +24,7 @@ from routes.groups import groups_bp
 from routes.doors import doors_bp
 from routes.access_points import access_points_bp
 from routes.wiegand_readers import wiegand_readers_bp
+from routes.audit import audit_bp
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +50,7 @@ app.register_blueprint(groups_bp)
 app.register_blueprint(doors_bp)
 app.register_blueprint(access_points_bp)
 app.register_blueprint(wiegand_readers_bp)
+app.register_blueprint(audit_bp)
 
 # After login_manager is created and initialized, add the user_loader function:
 @login_manager.user_loader
@@ -267,10 +269,7 @@ def updates():
     return render_template('updates.html')
 
 # System routes
-@app.route('/auditlog')
-@login_required
-def auditlog():
-    return render_template('auditlog.html')
+
 
 @app.route('/settings')
 @login_required

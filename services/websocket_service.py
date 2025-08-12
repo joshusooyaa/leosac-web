@@ -2112,4 +2112,254 @@ class LeosacWebSocketService:
       logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
+  def get_audit_logs(self, enabled_types=None, page=1, page_size=20):
+    """Get audit logs (thread-safe)"""
+    logger.info("=== GETTING AUDIT LOGS ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for audit logs: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return {'entries': [], 'meta': {}}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return {'entries': [], 'meta': {}}
+      
+      # Prepare request parameters
+      request_params = {
+        'p': page,
+        'ps': page_size
+      }
+      
+      # Add enabled types if specified - use 'enabled_type' (singular) as expected by server
+      if enabled_types:
+        request_params['enabled_type'] = enabled_types
+        
+      logger.info(f"=== AUDIT LOG REQUEST ===")
+      logger.info(f"Page: {page}, Page Size: {page_size}")
+      logger.info(f"Enabled Types: {enabled_types}")
+      logger.info(f"Request params: {request_params}")
+      
+      result = self._run_in_websocket_thread('audit.get', request_params)
+      
+      logger.info(f"=== AUDIT LOG RESPONSE ===")
+      logger.info(f"Raw result: {result}")
+      logger.info(f"Result type: {type(result)}")
+      logger.info(f"Result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+      
+      logger.debug(f"Audit logs result: {result}")
+      
+      if result and 'data' in result:
+        audit_data = result.get('data', [])
+        meta_data = result.get('meta', {})
+        
+        logger.info(f"Processing {len(audit_data)} audit entries")
+        logger.info(f"Meta data: {meta_data}")
+        
+        if len(audit_data) == 0:
+          logger.warning("No audit data returned from server despite having entries")
+          logger.warning("This might indicate a filtering issue or server-side problem")
+        
+        # Process audit entries
+        audit_entries = []
+        for entry in audit_data:
+          logger.debug(f"Processing audit entry: {entry}")
+          processed_entry = self._process_audit_entry(entry)
+          if processed_entry:
+            audit_entries.append(processed_entry)
+            logger.debug(f"Added processed entry: {processed_entry}")
+          else:
+            logger.debug(f"Skipped entry (returned None): {entry}")
+        
+        logger.info(f"✓ Retrieved {len(audit_entries)} audit entries")
+        
+        return {
+          'entries': audit_entries,
+          'meta': meta_data
+        }
+      else:
+        error_msg = result.get('status_string', 'Unknown error') if result else 'No response'
+        logger.error(f"✗ Failed to get audit logs: {error_msg}")
+        logger.error(f"Full error result: {result}")
+        return {'entries': [], 'meta': {}}
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting audit logs: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return {'entries': [], 'meta': {}}
+
+  def _process_audit_entry(self, entry):
+    """Process a single audit entry to extract relevant information"""
+    try:
+      entry_type = entry.get('type', '')
+      attributes = entry.get('attributes', {})
+      relationships = entry.get('relationships', {})
+      
+      # Extract common fields
+      processed_entry = {
+        'id': entry.get('id'),
+        'type': entry_type,
+        'timestamp': attributes.get('timestamp'),
+        'author': attributes.get('author'),
+        'description': attributes.get('description', ''),
+        'event_type': attributes.get('event_type'),
+        'event_mask': attributes.get('event_mask')
+      }
+      
+      # Process different audit entry types
+      if entry_type == 'audit-user-event':
+        processed_entry.update({
+          'target_user_id': attributes.get('target_id'),
+          'target_username': attributes.get('target_username'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'User Management'
+        })
+      elif entry_type == 'audit-wsapicall-event':
+        # Skip websocket API call events - user doesn't want to see them
+        return None
+      elif entry_type == 'audit-door-event':
+        processed_entry.update({
+          'target_door_id': attributes.get('target_id'),
+          'target_door_alias': attributes.get('target_alias'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Door Management'
+        })
+      elif entry_type == 'audit-group-event':
+        processed_entry.update({
+          'target_group_id': attributes.get('target_id'),
+          'target_group_name': attributes.get('target_name'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Group Management'
+        })
+      elif entry_type == 'audit-credential-event':
+        processed_entry.update({
+          'target_credential_id': attributes.get('target_id'),
+          'target_credential_alias': attributes.get('target_alias'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Credential Management'
+        })
+      elif entry_type == 'audit-schedule-event':
+        processed_entry.update({
+          'target_schedule_id': attributes.get('target_id'),
+          'target_schedule_name': attributes.get('target_name'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Schedule Management'
+        })
+      elif entry_type == 'audit-user-group-membership-event':
+        processed_entry.update({
+          'target_user_id': attributes.get('target_user_id'),
+          'target_group_id': attributes.get('target_group_id'),
+          'target_user_username': attributes.get('target_user_username'),
+          'target_group_name': attributes.get('target_group_name'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Membership Management'
+        })
+      elif entry_type == 'audit-zone-event':
+        processed_entry.update({
+          'target_zone_id': attributes.get('target_id'),
+          'target_zone_alias': attributes.get('target_alias'),
+          'before': attributes.get('before'),
+          'after': attributes.get('after'),
+          'event_category': 'Zone Management'
+        })
+      elif entry_type == 'audit-update-event':
+        processed_entry.update({
+          'update_id': attributes.get('update_id'),
+          'update_name': attributes.get('update_name'),
+          'update_status': attributes.get('update_status'),
+          'event_category': 'System Update'
+        })
+      elif entry_type == 'audit-auth-event':
+        # Extract credential and door information from relationships
+        # The relationships are arrays, not single objects
+        credential_data = relationships.get('credential', [])
+        door_data = relationships.get('door', [])
+        
+        # Get first credential and door from arrays
+        credential = credential_data[0] if credential_data else {}
+        door = door_data[0] if door_data else {}
+        
+        # Log the relationships data for debugging
+        logger.debug(f"Auth event relationships - credential: {credential}, door: {door}")
+        
+        # Parse access granted from description
+        access_granted = self._parse_access_granted_from_description(attributes.get('description', ''))
+        logger.debug(f"Parsed access_granted: {access_granted} from description: {attributes.get('description', '')}")
+        
+        processed_entry.update({
+          'credential_id': credential.get('id'),
+          'credential_raw': credential.get('raw'),
+          'door_alias': door.get('id'),
+          'access_granted': access_granted,
+          'event_category': 'Access Control'
+        })
+        
+        # Log the processed auth event for debugging
+        logger.debug(f"Processed auth event: {processed_entry}")
+      else:
+        # Generic processing for unknown types
+        processed_entry.update({
+          'event_category': 'Other',
+          'raw_attributes': attributes
+        })
+      
+      # Format timestamp if available
+      if processed_entry.get('timestamp'):
+        try:
+          # Convert timestamp to readable format
+          timestamp = int(processed_entry['timestamp'])
+          processed_entry['formatted_timestamp'] = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+          processed_entry['formatted_timestamp'] = str(processed_entry['timestamp'])
+      
+      return processed_entry
+      
+    except Exception as e:
+      logger.error(f"✗ Error processing audit entry: {e}")
+      logger.error(f"Entry data: {entry}")
+      return None
+
+  def _parse_access_granted_from_description(self, description):
+    """Parse access granted status from audit event description"""
+    if not description:
+      return None
+    
+    # Look for common patterns in auth event descriptions
+    description_lower = description.lower()
+    
+    if 'access granted' in description_lower:
+      return True
+    elif 'access denied' in description_lower:
+      return False
+    elif 'granted' in description_lower:
+      return True
+    elif 'denied' in description_lower:
+      return False
+    
+    # Default to None if we can't determine
+    return None
+
+  def get_audit_event_types(self):
+    """Get available audit event types"""
+    return [
+      'Leosac::Audit::UserEvent',
+      'Leosac::Audit::WSAPICall',
+      'Leosac::Audit::DoorEvent',
+      'Leosac::Audit::GroupEvent',
+      'Leosac::Audit::CredentialEvent',
+      'Leosac::Audit::ScheduleEvent',
+      'Leosac::Audit::UserGroupMembershipEvent',
+      'Leosac::Audit::ZoneEvent',
+      'Leosac::Audit::UpdateEvent',
+      'Leosac::Audit::AuthEvent'
+    ]
+
 leosac_client = LeosacWebSocketService()

@@ -5,34 +5,818 @@
 
 {% block content %}
 <div class="col-lg-12 col-md-12">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Audit Log</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="text-center">Audit log entries will be implemented here</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="row align-items-center">
+            <div class="col-md-6">
+              <h5 class="mb-0">Audit Log</h5>
             </div>
+            <div class="col-md-6 text-right">
+              <div class="input-group input-group-sm" style="max-width: 300px; float: right;">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search in descriptions...">
+                <div class="input-group-append">
+                  <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                    <i class="fas fa-search"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary ml-2" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-primary ml-2" data-toggle="modal" data-target="#filterModal">
+                <i class="fas fa-filter"></i> Filter
+              </button>
+            </div>
+          </div>
         </div>
+        <div class="card-body">
+          <!-- Summary Statistics -->
+          <div class="row mb-3" id="summaryStats" style="display: none;">
+            <div class="col-md-3">
+              <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                  <h5 id="totalAuthEvents">0</h5>
+                  <small>Total Auth Events</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                  <h5 id="accessGranted">0</h5>
+                  <small>Access Granted</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                  <h5 id="accessDenied">0</h5>
+                  <small>Access Denied</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                  <h5 id="uniqueCredentials">0</h5>
+                  <small>Unique Credentials</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Loading indicator -->
+          <div id="loadingIndicator" class="text-center" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+              <span class="sr-only">Loading...</span>
+            </div>
+            <p class="mt-2">Loading audit logs...</p>
+          </div>
+          
+          <!-- Error message -->
+          <div id="errorMessage" class="alert alert-danger" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="errorText"></span>
+          </div>
+          
+          <!-- Audit logs table -->
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="auditTable" width="100%" cellspacing="0">
+              <thead class="thead-light">
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Access</th>
+                  <th>User</th>
+                  <th>Card Credentials</th>
+                  <th>Door</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr>
+                  <td colspan="6" class="text-center">Loading audit logs...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+              <span id="paginationInfo">Showing 0 of 0 entries</span>
+            </div>
+            <nav>
+              <ul class="pagination pagination-sm" id="pagination">
+                <!-- Pagination will be populated by JavaScript -->
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-labelledby="filterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterModalLabel">Filter Audit Logs</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <div class="col-md-4">
+            <h6>Event Types</h6>
+            <div id="eventTypeFilters">
+              <!-- Event type checkboxes will be populated by JavaScript -->
+            </div>
+          </div>
+          <div class="col-md-4">
+            <h6>Quick Filters</h6>
+            <div class="btn-group-vertical w-100" role="group">
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterByType('audit-auth-event')">
+                <i class="fas fa-key"></i> Access Events Only
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-success" onclick="filterByType('audit-user-event')">
+                <i class="fas fa-user"></i> User Events Only
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-warning" onclick="filterByType('audit-door-event')">
+                <i class="fas fa-door-open"></i> Door Events Only
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-info" onclick="filterByType('audit-credential-event')">
+                <i class="fas fa-id-card"></i> Credential Events Only
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showAllTypes()">
+                <i class="fas fa-list"></i> Show All Types
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearAllFilters()">
+                <i class="fas fa-times"></i> Clear All Filters
+              </button>
+            </div>
+            <hr>
+            <h6>Access Control Filters</h6>
+            <div class="btn-group-vertical w-100" role="group">
+              <button type="button" class="btn btn-sm btn-outline-success" onclick="filterByAccessStatus(true)">
+                <i class="fas fa-check-circle"></i> Access Granted Only
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="filterByAccessStatus(false)">
+                <i class="fas fa-times-circle"></i> Access Denied Only
+              </button>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <h6>Page Size</h6>
+            <select class="form-control" id="pageSizeSelect">
+              <option value="10">10 entries per page</option>
+              <option value="20" selected>20 entries per page</option>
+              <option value="50">50 entries per page</option>
+              <option value="100">100 entries per page</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailsModalLabel">Audit Entry Details</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="detailsModalBody">
+        <!-- Details will be populated by JavaScript -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global variables
+let currentPage = 1;
+let pageSize = 20;
+let totalPages = 0;
+let totalEntries = 0;
+let enabledTypes = [];
+let currentAuditData = [];
+
+// Initialize the page when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Audit log page loaded, initializing...');
+  
+  // Test if jQuery is working
+  if (typeof $ !== 'undefined') {
+    console.log('jQuery version:', $.fn.jquery);
+    
+    // Test if our elements exist
+    console.log('Audit table exists:', $('#auditTable').length > 0);
+    console.log('Loading indicator exists:', $('#loadingIndicator').length > 0);
+    
+    // Test if we can make a simple AJAX request
+    console.log('Testing AJAX...');
+    $.get('/api/audit/event-types', function(data) {
+      console.log('AJAX test successful:', data);
+    }).fail(function(xhr, status, error) {
+      console.error('AJAX test failed:', xhr, status, error);
+    });
+    
+    loadEventTypes();
+    loadAuditLogs();
+    
+    // Event listeners
+    $('#refreshBtn').click(function() {
+      console.log('Refresh button clicked');
+      loadAuditLogs();
+    });
+    
+    $('#applyFilters').click(function() {
+      console.log('Apply filters button clicked');
+      applyFilters();
+    });
+    
+    $('#pageSizeSelect').change(function() {
+      console.log('Page size changed to:', $(this).val());
+      pageSize = parseInt($(this).val());
+      currentPage = 1;
+      loadAuditLogs();
+    });
+    
+    // Search functionality
+    $('#searchBtn').click(function() {
+      performSearch();
+    });
+    
+    $('#searchInput').keypress(function(e) {
+      if (e.which == 13) { // Enter key
+        performSearch();
+      }
+    });
+  } else {
+    console.error('jQuery is not loaded!');
+    // Show error message to user
+    document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error: jQuery not loaded. Please refresh the page.</td></tr>';
+  }
+});
+
+// Load available event types
+function loadEventTypes() {
+  console.log('Loading event types...');
+  $.ajax({
+    url: '/api/audit/event-types',
+    method: 'GET',
+    success: function(response) {
+      console.log('Event types response:', response);
+      if (response.success) {
+        populateEventTypeFilters(response.data);
+      } else {
+        showError('Failed to load event types: ' + response.error);
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Event types error:', xhr, status, error);
+      showError('Failed to load event types: ' + error);
+    }
+  });
+}
+
+// Populate event type filter checkboxes
+function populateEventTypeFilters(eventTypes) {
+  const container = $('#eventTypeFilters');
+  container.empty();
+  
+  // Define which event types to show by default (exclude WebSocket API calls)
+  const defaultEnabledTypes = [
+    'Leosac::Audit::UserEvent',
+    'Leosac::Audit::GroupEvent',
+    'Leosac::Audit::CredentialEvent',
+    'Leosac::Audit::ScheduleEvent',
+    'Leosac::Audit::DoorEvent',
+    'Leosac::Audit::UserGroupMembershipEvent',
+    'Leosac::Audit::ZoneEvent',
+    'Leosac::Audit::UpdateEvent',
+    'Leosac::Audit::AuthEvent'
+  ];
+  
+  eventTypes.forEach(function(type) {
+    const displayName = type.replace('Leosac::Audit::', '');
+    const isChecked = defaultEnabledTypes.includes(type);
+    const checkbox = $(`
+      <div class="custom-control custom-checkbox">
+        <input type="checkbox" class="custom-control-input" id="filter_${type}" value="${type}" ${isChecked ? 'checked' : ''}>
+        <label class="custom-control-label" for="filter_${type}">${displayName}</label>
+      </div>
+    `);
+    container.append(checkbox);
+  });
+  
+  // Set initial enabled types
+  enabledTypes = defaultEnabledTypes;
+}
+
+// Apply filters
+function applyFilters() {
+  enabledTypes = [];
+  $('#eventTypeFilters input:checked').each(function() {
+    enabledTypes.push($(this).val());
+  });
+  
+  currentPage = 1;
+  $('#filterModal').modal('hide');
+  loadAuditLogs();
+}
+
+// Filter by specific event type
+function filterByType(eventType) {
+  enabledTypes = [eventType];
+  currentPage = 1;
+  // Clear access filter when filtering by type
+  window.accessFilter = undefined;
+  $('#filterModal').modal('hide');
+  loadAuditLogs();
+}
+
+// Show all event types
+function showAllTypes() {
+  enabledTypes = [];
+  currentPage = 1;
+  // Clear access filter
+  window.accessFilter = undefined;
+  $('#filterModal').modal('hide');
+  loadAuditLogs();
+}
+
+// Filter by access status (granted/denied)
+function filterByAccessStatus(accessGranted) {
+  // Set filter state and reload with normal pagination
+  enabledTypes = ['audit-auth-event'];
+  currentPage = 1;
+  
+  $('#filterModal').modal('hide');
+  loadAuditLogs();
+}
+
+// Clear all filters and show all data
+function clearAllFilters() {
+  enabledTypes = [];
+  window.accessFilter = undefined;
+  currentPage = 1;
+  $('#filterModal').modal('hide');
+  loadAuditLogs();
+}
+
+// Perform search in current data
+function performSearch() {
+  const searchTerm = $('#searchInput').val().toLowerCase();
+  if (!searchTerm) {
+    // If search is empty, show all entries
+    displayAuditLogs(currentAuditData, {count: currentAuditData.length, total_page: 1});
+    return;
+  }
+  
+  const filteredEntries = currentAuditData.filter(entry => {
+    return (entry.description && entry.description.toLowerCase().includes(searchTerm)) ||
+           (entry.author && entry.author.toLowerCase().includes(searchTerm)) ||
+           (entry.event_category && entry.event_category.toLowerCase().includes(searchTerm)) ||
+           (entry.event_type && entry.event_type.toLowerCase().includes(searchTerm)) ||
+           (entry.credential_id && entry.credential_id.toString().includes(searchTerm)) ||
+           (entry.credential_raw && entry.credential_raw.toLowerCase().includes(searchTerm)) ||
+           (entry.door_alias && entry.door_alias.toLowerCase().includes(searchTerm));
+  });
+  
+  displayAuditLogs(filteredEntries, {count: filteredEntries.length, total_page: 1});
+}
+
+// Load audit logs
+function loadAuditLogs() {
+  showLoading(true);
+  hideError();
+  
+  const params = {
+    page: currentPage,
+    page_size: pageSize
+  };
+  
+  if (enabledTypes.length > 0) {
+    params['enabled_types'] = enabledTypes;
+  }
+  
+  console.log('Loading audit logs with params:', params);
+  
+  $.ajax({
+    url: '/api/audit/logs',
+    method: 'GET',
+    data: params,
+    success: function(response) {
+      console.log('Audit logs response:', response);
+      showLoading(false);
+      if (response.success) {
+        displayAuditLogs(response.data, response.meta);
+      } else {
+        showError('Failed to load audit logs: ' + response.error);
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Audit logs error:', xhr, status, error);
+      showLoading(false);
+      showError('Failed to load audit logs: ' + error);
+    }
+  });
+}
+
+// Display audit logs in table
+function displayAuditLogs(entries, meta) {
+  const tbody = $('#auditTableBody');
+  tbody.empty();
+  
+  // Store current data for details modal
+  currentAuditData = entries;
+  
+  if (entries.length === 0) {
+    tbody.append('<tr><td colspan="6" class="text-center">No audit entries found</td></tr>');
+    return;
+  }
+  
+  entries.forEach(function(entry) {
+    // Add color coding based on event type
+    let badgeClass = 'badge-secondary';
+    if (entry.type === 'audit-auth-event') {
+      badgeClass = entry.access_granted ? 'badge-success' : 'badge-danger';
+    } else if (entry.type === 'audit-user-event') {
+      badgeClass = 'badge-primary';
+    } else if (entry.type === 'audit-door-event') {
+      badgeClass = 'badge-warning';
+    } else if (entry.type === 'audit-credential-event') {
+      badgeClass = 'badge-info';
+    }
+    
+    // Generate access column for auth events
+    let accessColumn = '';
+    if (entry.type === 'audit-auth-event') {
+      const accessStatus = entry.access_granted === true ? 'GRANTED' : entry.access_granted === false ? 'DENIED' : 'UNKNOWN';
+      if (entry.access_granted === true) {
+        accessColumn = `<span class="badge badge-success" style="background-color: #28a745 !important; color: white !important;">${accessStatus}</span>`;
+      } else if (entry.access_granted === false) {
+        accessColumn = `<span class="badge badge-danger" style="background-color: #dc3545 !important; color: white !important;">${accessStatus}</span>`;
+      } else {
+        accessColumn = `<span class="badge badge-secondary" style="background-color: #6c757d !important; color: white !important;">${accessStatus}</span>`;
+      }
+    } else {
+      accessColumn = '<span class="text-muted">N/A</span>';
+    }
+    
+    // Generate card credentials column - show bit representation if available
+    let cardCredentials = '';
+    if (entry.type === 'audit-auth-event' && entry.credential_raw) {
+      try {
+        const credData = JSON.parse(entry.credential_raw);
+        if (credData.attributes && credData.attributes['card-id']) {
+          cardCredentials = credData.attributes['card-id'];
+        } else {
+          cardCredentials = entry.credential_id || 'N/A';
+        }
+      } catch (e) {
+        cardCredentials = entry.credential_id || 'N/A';
+      }
+    } else {
+      cardCredentials = '<span class="text-muted">N/A</span>';
+    }
+    
+    // Generate door column (remove my_leosac. prefix)
+    let doorColumn = '';
+    if (entry.type === 'audit-auth-event' && entry.door_alias) {
+      doorColumn = entry.door_alias.replace('my_leosac.', '');
+    } else {
+      doorColumn = '<span class="text-muted">N/A</span>';
+    }
+    
+    // Generate user column - extract user name from credential data
+    let userColumn = '';
+    if (entry.type === 'audit-auth-event' && entry.credential_raw) {
+      try {
+        const credData = JSON.parse(entry.credential_raw);
+        if (credData.attributes && credData.attributes.alias) {
+          userColumn = credData.attributes.alias;
+        } else {
+          userColumn = '<span class="text-muted">N/A</span>';
+        }
+      } catch (e) {
+        userColumn = '<span class="text-muted">N/A</span>';
+      }
+    } else {
+      userColumn = '<span class="text-muted">N/A</span>';
+    }
+    
+    const row = $(`
+      <tr>
+        <td>${entry.formatted_timestamp || 'N/A'}</td>
+        <td>${accessColumn}</td>
+        <td>${userColumn}</td>
+        <td>${cardCredentials}</td>
+        <td>${doorColumn}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+            <i class="fas fa-eye"></i> Details
+          </button>
+        </td>
+      </tr>
+    `);
+    tbody.append(row);
+  });
+  
+  // Update pagination
+  totalEntries = meta.count || 0;
+  totalPages = meta.total_page || 0;
+  updatePagination();
+  updatePaginationInfo();
+  
+  // Update summary statistics
+  updateSummaryStats(entries);
+}
+
+// Update summary statistics
+function updateSummaryStats(entries) {
+  console.log('Updating summary stats with entries:', entries);
+  
+  const authEvents = entries.filter(entry => entry.type === 'audit-auth-event');
+  console.log('Auth events found:', authEvents);
+  
+  const totalAuth = authEvents.length;
+  const granted = authEvents.filter(entry => entry.access_granted === true).length;
+  const denied = authEvents.filter(entry => entry.access_granted === false).length;
+  
+  // Count unique credentials
+  const uniqueCreds = new Set();
+  authEvents.forEach(entry => {
+    if (entry.credential_id) {
+      uniqueCreds.add(entry.credential_id);
+    }
+  });
+  
+  console.log('Stats calculated:', { totalAuth, granted, denied, uniqueCreds: uniqueCreds.size });
+  
+  // Update the display
+  $('#totalAuthEvents').text(totalAuth);
+  $('#accessGranted').text(granted);
+  $('#accessDenied').text(denied);
+  $('#uniqueCredentials').text(uniqueCreds.size);
+  
+  // Show the summary stats
+  $('#summaryStats').show();
+}
+
+// Format event type for display
+function formatEventType(eventType) {
+  if (!eventType) return 'N/A';
+  
+  // Convert event type to readable format
+  const typeMap = {
+    'USER_CREATED': 'User Created',
+    'USER_DELETED': 'User Deleted',
+    'USER_EDITED': 'User Edited',
+    'USER_PASSWORD_CHANGED': 'Password Changed',
+    'USER_PASSWORD_CHANGE_FAILURE': 'Password Change Failed',
+    'GROUP_CREATED': 'Group Created',
+    'GROUP_UPDATED': 'Group Updated',
+    'GROUP_DELETED': 'Group Deleted',
+    'GROUP_MEMBERSHIP_JOINED': 'User Joined Group',
+    'GROUP_MEMBERSHIP_LEFT': 'User Left Group',
+    'CREDENTIAL_CREATED': 'Credential Created',
+    'CREDENTIAL_UPDATED': 'Credential Updated',
+    'CREDENTIAL_DELETED': 'Credential Deleted',
+    'SCHEDULE_CREATED': 'Schedule Created',
+    'SCHEDULE_UPDATED': 'Schedule Updated',
+    'SCHEDULE_DELETED': 'Schedule Deleted',
+    'DOOR_CREATED': 'Door Created',
+    'DOOR_UPDATED': 'Door Updated',
+    'DOOR_DELETED': 'Door Deleted',
+    'DOOR_OPENED': 'Door Opened',
+    'DOOR_OPENED_MANUALLY': 'Door Opened Manually',
+    'DOOR_FORCED': 'Door Forced',
+    'DOOR_FORCED_END': 'Door Force Ended',
+    'AUTH_GRANTED': 'Access Granted',
+    'AUTH_DENIED': 'Access Denied',
+    'WSAPI_CALL': 'API Call',
+    'ZONE_CREATED': 'Zone Created',
+    'ZONE_UPDATED': 'Zone Updated',
+    'ZONE_DELETED': 'Zone Deleted',
+    'UPDATE_CREATED': 'Update Created',
+    'UPDATE_ACKED': 'Update Acknowledged',
+    'UPDATE_CANCELLED': 'Update Cancelled'
+  };
+  
+  return typeMap[eventType] || eventType;
+}
+
+// Show audit entry details
+function showDetails(entryId) {
+  // Find the entry in the current data
+  const entry = currentAuditData.find(e => e.id == entryId);
+  if (!entry) {
+    $('#detailsModalBody').html(`
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        Entry ${entryId} not found in current data.
+      </div>
+    `);
+    $('#detailsModal').modal('show');
+    return;
+  }
+  
+  let detailsHtml = `
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Basic Information</h6>
+        <table class="table table-sm">
+          <tr><td><strong>ID:</strong></td><td>${entry.id}</td></tr>
+          <tr><td><strong>Type:</strong></td><td><span class="badge badge-secondary">${entry.type}</span></td></tr>
+          <tr><td><strong>Category:</strong></td><td>${entry.event_category || 'N/A'}</td></tr>
+
+          <tr><td><strong>Timestamp:</strong></td><td>${entry.formatted_timestamp || 'N/A'}</td></tr>
+          <tr><td><strong>Author:</strong></td><td>${entry.author || 'System'}</td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <h6>Description</h6>
+        <p>${entry.description || 'No description available'}</p>
+      </div>
+    </div>
+  `;
+  
+  // Add specific details based on event type
+  if (entry.type === 'audit-auth-event') {
+    detailsHtml += `
+      <hr>
+      <h6>Access Control Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>Credential ID:</strong></td><td>${entry.credential_id || 'N/A'}</td></tr>
+        <tr><td><strong>Credential Raw Data:</strong></td><td>${entry.credential_raw || 'N/A'}</td></tr>
+        <tr><td><strong>Door:</strong></td><td>${entry.door_alias || 'N/A'}</td></tr>
+        <tr><td><strong>Access:</strong></td><td><span class="badge badge-${entry.access_granted === true ? 'success' : entry.access_granted === false ? 'danger' : 'secondary'}">${entry.access_granted === true ? 'GRANTED' : entry.access_granted === false ? 'DENIED' : 'UNKNOWN'}</span></td></tr>
+      </table>
+    `;
+  } else if (entry.type === 'audit-user-event') {
+    detailsHtml += `
+      <hr>
+      <h6>User Event Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>Target User ID:</strong></td><td>${entry.target_user_id || 'N/A'}</td></tr>
+        <tr><td><strong>Target Username:</strong></td><td>${entry.target_username || 'N/A'}</td></tr>
+      </table>
+    `;
+    if (entry.before || entry.after) {
+      detailsHtml += `
+        <h6>Changes</h6>
+        <div class="row">
+          ${entry.before ? `<div class="col-md-6"><strong>Before:</strong><pre class="bg-light p-2">${JSON.stringify(JSON.parse(entry.before), null, 2)}</pre></div>` : ''}
+          ${entry.after ? `<div class="col-md-6"><strong>After:</strong><pre class="bg-light p-2">${JSON.stringify(JSON.parse(entry.after), null, 2)}</pre></div>` : ''}
+        </div>
+      `;
+    }
+  } else if (entry.type === 'audit-door-event') {
+    detailsHtml += `
+      <hr>
+      <h6>Door Event Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>Target Door ID:</strong></td><td>${entry.target_door_id || 'N/A'}</td></tr>
+        <tr><td><strong>Target Door Alias:</strong></td><td>${entry.target_door_alias || 'N/A'}</td></tr>
+      </table>
+    `;
+  } else if (entry.type === 'audit-group-event') {
+    detailsHtml += `
+      <hr>
+      <h6>Group Event Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>Target Group ID:</strong></td><td>${entry.target_group_id || 'N/A'}</td></tr>
+        <tr><td><strong>Target Group Name:</strong></td><td>${entry.target_group_name || 'N/A'}</td></tr>
+      </table>
+    `;
+  } else if (entry.type === 'audit-credential-event') {
+    detailsHtml += `
+      <hr>
+      <h6>Credential Event Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>Target Credential ID:</strong></td><td>${entry.target_credential_id || 'N/A'}</td></tr>
+        <tr><td><strong>Target Credential Alias:</strong></td><td>${entry.target_credential_alias || 'N/A'}</td></tr>
+      </table>
+    `;
+  } else if (entry.type === 'audit-user-group-membership-event') {
+    detailsHtml += `
+      <hr>
+      <h6>Membership Event Details</h6>
+      <table class="table table-sm">
+        <tr><td><strong>User ID:</strong></td><td>${entry.target_user_id || 'N/A'}</td></tr>
+        <tr><td><strong>Username:</strong></td><td>${entry.target_user_username || 'N/A'}</td></tr>
+        <tr><td><strong>Group ID:</strong></td><td>${entry.target_group_id || 'N/A'}</td></tr>
+        <tr><td><strong>Group Name:</strong></td><td>${entry.target_group_name || 'N/A'}</td></tr>
+      </table>
+    `;
+  }
+  
+  // Add raw data section for debugging
+  detailsHtml += `
+    <hr>
+    <h6>Raw Data</h6>
+    <details>
+      <summary>Click to view raw entry data</summary>
+      <pre class="bg-light p-2 mt-2">${JSON.stringify(entry, null, 2)}</pre>
+    </details>
+  `;
+  
+  $('#detailsModalBody').html(detailsHtml);
+  $('#detailsModal').modal('show');
+}
+
+// Update pagination controls
+function updatePagination() {
+  const pagination = $('#pagination');
+  pagination.empty();
+  
+  if (totalPages <= 1) return;
+  
+  // Previous button
+  const prevBtn = $(`
+    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+    </li>
+  `);
+  pagination.append(prevBtn);
+  
+  // Page numbers
+  const startPage = Math.max(1, currentPage - 2);
+  const endPage = Math.min(totalPages, currentPage + 2);
+  
+  for (let i = startPage; i <= endPage; i++) {
+    const pageBtn = $(`
+      <li class="page-item ${i === currentPage ? 'active' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+      </li>
+    `);
+    pagination.append(pageBtn);
+  }
+  
+  // Next button
+  const nextBtn = $(`
+    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+    </li>
+  `);
+  pagination.append(nextBtn);
+}
+
+// Change page
+function changePage(page) {
+  if (page >= 1 && page <= totalPages) {
+    currentPage = page;
+    loadAuditLogs();
+  }
+}
+
+// Update pagination info
+function updatePaginationInfo() {
+  const startEntry = (currentPage - 1) * pageSize + 1;
+  const endEntry = Math.min(currentPage * pageSize, totalEntries);
+  $('#paginationInfo').text(`Showing ${startEntry} to ${endEntry} of ${totalEntries} entries`);
+}
+
+// Show loading indicator
+function showLoading(show) {
+  if (show) {
+    $('#loadingIndicator').show();
+    $('#auditTable').hide();
+  } else {
+    $('#loadingIndicator').hide();
+    $('#auditTable').show();
+  }
+}
+
+// Show error message
+function showError(message) {
+  $('#errorText').text(message);
+  $('#errorMessage').show();
+}
+
+// Hide error message
+function hideError() {
+  $('#errorMessage').hide();
+}
+</script>
 {% endblock %} 
