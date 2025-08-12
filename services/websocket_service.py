@@ -11,7 +11,7 @@ import time
 import logging
 import queue
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from config.settings import WEBSOCKET_URL
 from utils.rank_converter import convert_rank_int_to_string, convert_rank_string_to_int
 
@@ -2385,7 +2385,11 @@ class LeosacWebSocketService:
         try:
           # Convert timestamp to readable format
           timestamp = int(processed_entry['timestamp'])
-          processed_entry['formatted_timestamp'] = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+          # Important: the backend stores epoch as if the wall-clock local time were UTC.
+          # Interpret the epoch as UTC using timezone-aware fromtimestamp (avoids utcfromtimestamp).
+          # Format as 12-hour clock with AM/PM, no timezone suffix.
+          formatted = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime('%Y-%m-%d %I:%M:%S %p')
+          processed_entry['formatted_timestamp'] = formatted
         except (ValueError, TypeError):
           processed_entry['formatted_timestamp'] = str(processed_entry['timestamp'])
       
