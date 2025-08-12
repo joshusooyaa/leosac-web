@@ -14,24 +14,16 @@
             <div class="col-md-6">
               <h5 class="mb-0">Audit Log</h5>
             </div>
-            <div class="col-md-6 text-right">
-              <div class="input-group input-group-sm" style="max-width: 350px; float: right;">
-                <input type="text" class="form-control" id="searchInput" placeholder="Search in descriptions...">
-                <div class="input-group-append">
-                  <button class="btn btn-outline-secondary" type="button" id="searchBtn">
-                    <i class="fas fa-search"></i>
-                  </button>
-                  <button class="btn btn-outline-warning" type="button" id="clearSearchBtn" style="display: none;">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
+            <div class="col-md-6">
+              <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+                <span id="activeFiltersHeaderBadge" class="badge bg-info text-dark me-2" style="display:none;"></span>
+                <button type="button" class="btn btn-sm btn-outline-secondary mr-2" id="refreshBtn">
+                  <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button type="button" id="filtersOpenBtn" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                  <i class="fas fa-filter"></i> Filters
+                </button>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-secondary ml-2" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-primary ml-2" data-toggle="modal" data-target="#filterModal">
-                <i class="fas fa-filter"></i> Filter
-              </button>
             </div>
           </div>
         </div>
@@ -284,64 +276,54 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="filterModalLabel">Filter Audit Logs</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <div class="row">
           <div class="col-md-4">
-            <h6>Event Types</h6>
-            <div id="eventTypeFilters">
-              <!-- Event type checkboxes will be populated by JavaScript -->
-            </div>
+            <h6>Doors</h6>
+            <div id="doorFilters" class="border rounded p-2" style="max-height:240px; overflow:auto;"></div>
           </div>
           <div class="col-md-4">
-            <h6>Quick Filters</h6>
-            <div class="btn-group-vertical w-100" role="group">
-              <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterByType('audit-auth-event')">
-                <i class="fas fa-key"></i> Access Events Only
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-success" onclick="filterByType('audit-user-event')">
-                <i class="fas fa-user"></i> User Events Only
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-warning" onclick="filterByType('audit-door-event')">
-                <i class="fas fa-door-open"></i> Door Events Only
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-info" onclick="filterByType('audit-credential-event')">
-                <i class="fas fa-id-card"></i> Credential Events Only
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showAllTypes()">
-                <i class="fas fa-list"></i> Show All Types
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearAllFilters()">
-                <i class="fas fa-times"></i> Clear All Filters
-              </button>
+            <h6>Users</h6>
+            <div id="userFilters" class="border rounded p-2" style="max-height:240px; overflow:auto;"></div>
+          </div>
+          <div class="col-md-4">
+            <h6>Time Range</h6>
+            <div class="form-group mb-2">
+              <label for="filterStart">Start</label>
+              <input type="datetime-local" id="filterStart" class="form-control form-control-sm">
+            </div>
+            <div class="form-group">
+              <label for="filterEnd">End</label>
+              <input type="datetime-local" id="filterEnd" class="form-control form-control-sm">
             </div>
             <hr>
-            <h6>Access Control Filters</h6>
-            <div class="btn-group-vertical w-100" role="group">
-              <button type="button" class="btn btn-sm btn-outline-success" onclick="filterByAccessStatus(true)">
-                <i class="fas fa-check-circle"></i> Access Granted Only
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-danger" onclick="filterByAccessStatus(false)">
-                <i class="fas fa-times-circle"></i> Access Denied Only
+            <h6>Access</h6>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="accessStatus" id="accessAll" value="all" checked>
+              <label class="form-check-label" for="accessAll">All</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="accessStatus" id="accessGrantedRadio" value="granted">
+              <label class="form-check-label" for="accessGrantedRadio">Granted</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="accessStatus" id="accessDeniedRadio" value="denied">
+              <label class="form-check-label" for="accessDeniedRadio">Denied</label>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center">
+              <div id="activeFiltersBadge" class="text-muted small"></div>
+              <button type="button" class="btn btn-sm btn-outline-warning" onclick="clearAllFilters()">
+                <i class="fas fa-times"></i> Clear All
               </button>
             </div>
-          </div>
-          <div class="col-md-4">
-            <h6>Page Size</h6>
-            <select class="form-control" id="pageSizeSelect">
-              <option value="10">10 entries per page</option>
-              <option value="20" selected>20 entries per page</option>
-              <option value="50">50 entries per page</option>
-              <option value="100">100 entries per page</option>
-            </select>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary" id="applyFilters">Apply Filters</button>
       </div>
     </div>
@@ -390,6 +372,11 @@ let tabData = {
   group: { entries: [], meta: {} },
   schedule: { entries: [], meta: {} }
 };
+
+// Filter selections
+window.selectedDoorAliases = [];
+window.selectedUserAliases = [];
+window.selectedAccessStatus = 'all'; // all | granted | denied
 
 // Safely parse JSON stored as string in 'before'/'after'
 function parseState(jsonStr) {
@@ -595,6 +582,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const hasValue = $(this).val().trim().length > 0;
       $('#clearSearchBtn').toggle(hasValue);
     });
+
+    // Ensure Filters button visibility matches current tab on load
+    if (currentTab === 'access') {
+      $('#filtersOpenBtn').show();
+    } else {
+      $('#filtersOpenBtn').hide();
+    }
   } else {
     console.error('jQuery is not loaded!');
     // Show error message to user
@@ -624,6 +618,28 @@ function setupTabHandlers() {
     currentTab = targetTab;
     // Reset pagination when switching tabs
     currentPage = 1;
+    // Filters ONLY for access tab: show/hide and hard reset when switching tabs
+    const isAccessTab = currentTab === 'access';
+    $('#filtersOpenBtn').toggle(isAccessTab);
+    if (!isAccessTab) {
+      // Full reset and hide badge
+      window.selectedDoorAliases = [];
+      window.selectedUserAliases = [];
+      window.selectedAccessStatus = 'all';
+      window.filterStartEpoch = undefined;
+      window.filterEndEpoch = undefined;
+      window.isFiltering = false;
+      // Reset UI controls if present
+      try {
+        $('#doorFilters input:checked').prop('checked', false);
+        $('#userFilters input:checked').prop('checked', false);
+        $('#filterStart').val('');
+        $('#filterEnd').val('');
+        $('input[name="accessStatus"][value="all"]').prop('checked', true);
+      } catch (_) {}
+      $('#activeFiltersHeaderBadge').hide().text('');
+      $('#activeFiltersBadge').text('');
+    }
     
     // Load data for the selected tab if not already loaded
     if (tabData[targetTab].entries.length === 0) {
@@ -686,28 +702,52 @@ function populateEventTypeFilters(eventTypes) {
     container.append(checkbox);
   });
   
-  // Set initial enabled types
-  enabledTypes = defaultEnabledTypes;
+  // Default to AuthEvent only for Access tab filtering; other filters removed
+  enabledTypes = ['Leosac::Audit::AuthEvent'];
 }
 
 // Apply filters
 function applyFilters() {
-  enabledTypes = [];
-  $('#eventTypeFilters input:checked').each(function() {
-    enabledTypes.push($(this).val());
+  // Doors
+  window.selectedDoorAliases = [];
+  $('#doorFilters input:checked').each(function() {
+    window.selectedDoorAliases.push($(this).val());
   });
-  
+
+  // Users
+  window.selectedUserAliases = [];
+  $('#userFilters input:checked').each(function() {
+    window.selectedUserAliases.push($(this).val());
+  });
+
+  // Access status
+  const accessSel = $('input[name="accessStatus"]:checked').val();
+  window.selectedAccessStatus = accessSel || 'all';
+
+  // Capture time range
+  const startVal = $('#filterStart').val();
+  const endVal = $('#filterEnd').val();
+  window.filterStartEpoch = startVal ? Math.floor(new Date(startVal).getTime() / 1000) : undefined;
+  window.filterEndEpoch = endVal ? Math.floor(new Date(endVal).getTime() / 1000) : undefined;
+
+  // Activate client-side filtering (access tab only)
+  window.isFiltering = (currentTab === 'access') && (
+    !!window.filterStartEpoch || !!window.filterEndEpoch ||
+    (window.selectedDoorAliases && window.selectedDoorAliases.length > 0) ||
+    (window.selectedUserAliases && window.selectedUserAliases.length > 0) ||
+    (window.selectedAccessStatus && window.selectedAccessStatus !== 'all')
+  );
+
+  updateFiltersBadges();
   currentPage = 1;
-  $('#filterModal').modal('hide');
-  loadAuditLogs();
+  try { $('#filterModal').modal('hide'); } catch(e) {}
+  displayTabData(currentTab);
 }
 
 // Filter by specific event type
 function filterByType(eventType) {
   enabledTypes = [eventType];
   currentPage = 1;
-  // Clear access filter when filtering by type
-  window.accessFilter = undefined;
   $('#filterModal').modal('hide');
   loadAuditLogs();
 }
@@ -716,29 +756,40 @@ function filterByType(eventType) {
 function showAllTypes() {
   enabledTypes = [];
   currentPage = 1;
-  // Clear access filter
-  window.accessFilter = undefined;
   $('#filterModal').modal('hide');
   loadAuditLogs();
 }
 
 // Filter by access status (granted/denied)
 function filterByAccessStatus(accessGranted) {
-  // Set filter state and reload with normal pagination
   enabledTypes = ['audit-auth-event'];
   currentPage = 1;
-  
   $('#filterModal').modal('hide');
   loadAuditLogs();
 }
 
 // Clear all filters and show all data
 function clearAllFilters() {
-  enabledTypes = [];
-  window.accessFilter = undefined;
+  // Reset selections
+  window.selectedDoorAliases = [];
+  window.selectedUserAliases = [];
+  window.selectedAccessStatus = 'all';
+  window.filterStartEpoch = undefined;
+  window.filterEndEpoch = undefined;
+  window.isFiltering = false;
+
+  // Reset UI
+  $('#doorFilters input:checked').prop('checked', false);
+  $('#userFilters input:checked').prop('checked', false);
+  $('#filterStart').val('');
+  $('#filterEnd').val('');
+  $('input[name="accessStatus"][value="all"]').prop('checked', true);
+  updateFiltersBadges();
+
   currentPage = 1;
-  $('#filterModal').modal('hide');
-  loadAuditLogs();
+  try { $('#filterModal').modal('hide'); } catch(e) {}
+  // Re-render current data without filters
+  displayTabData(currentTab);
 }
 
 // Perform search through current tab data
@@ -860,6 +911,10 @@ function loadTabData(tabName) {
   if (eventTypes.length > 0) {
     params['enabled_types'] = eventTypes;
   }
+
+  // Add time range filters if set (server expects epoch seconds)
+  if (window.filterStartEpoch) params['start_ts'] = window.filterStartEpoch;
+  if (window.filterEndEpoch) params['end_ts'] = window.filterEndEpoch;
   
   console.log('Loading tab data with params:', params);
   
@@ -902,9 +957,50 @@ function displayTabData(tabName) {
     return;
   }
   
-  // Update current data and display
-  currentAuditData = data.entries;
-  displayAuditLogs(data.entries, data.meta, tabName);
+  // Populate Doors/Users from current data when on access tab
+  if (tabName === 'access') {
+    populateDoorAndUserFilters(data.entries);
+  } else {
+    // Non-access tabs: ensure filters are not applied and badge hidden
+    window.isFiltering = false;
+    $('#activeFiltersHeaderBadge').hide().text('');
+    $('#activeFiltersBadge').text('');
+  }
+
+  // Apply client-side filters if active on access tab only
+  let entriesToShow = data.entries;
+  const filteringActive = (tabName === 'access') && window.isFiltering;
+  if (filteringActive) {
+    entriesToShow = entriesToShow.filter(e => {
+      // Time range
+      const tsOk = (!window.filterStartEpoch || (e.timestamp && e.timestamp >= window.filterStartEpoch)) &&
+                   (!window.filterEndEpoch || (e.timestamp && e.timestamp <= window.filterEndEpoch));
+      // Doors
+      const doorVal = normalizeDoorAlias(e.door_alias);
+      const doorOk = !(window.selectedDoorAliases && window.selectedDoorAliases.length) ||
+                     (doorVal && window.selectedDoorAliases.includes(doorVal));
+      // Users
+      const userVal = deriveUserAliasFromEntry(e);
+      const userOk = !(window.selectedUserAliases && window.selectedUserAliases.length) ||
+                     (userVal && window.selectedUserAliases.includes(userVal));
+      // Access status
+      let accessOk = true;
+      if (window.selectedAccessStatus === 'granted') accessOk = (e.access_granted === true);
+      else if (window.selectedAccessStatus === 'denied') accessOk = (e.access_granted === false);
+      return tsOk && doorOk && userOk && accessOk;
+    });
+    // Client-side paginate
+    totalEntries = entriesToShow.length;
+    totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
+    const startIdx = (currentPage - 1) * pageSize;
+    const pageSlice = entriesToShow.slice(startIdx, startIdx + pageSize);
+    currentAuditData = pageSlice;
+    displayAuditLogs(pageSlice, {count: totalEntries, total_page: totalPages}, tabName);
+  } else {
+    // Update current data and display
+    currentAuditData = entriesToShow;
+    displayAuditLogs(entriesToShow, data.meta, tabName);
+  }
   
   // Update statistics: only show on access tab and compute across all results
   if (tabName === 'access') {
@@ -1046,6 +1142,89 @@ function generateAccessRow(entry) {
       </td>
     </tr>
   `);
+}
+
+function normalizeDoorAlias(alias) {
+  if (!alias) return '';
+  return String(alias).replace(/^my_leosac\./, '');
+}
+
+function deriveUserAliasFromEntry(entry) {
+  if (!entry) return '';
+  if (entry.credential_raw) {
+    try {
+      const credData = JSON.parse(entry.credential_raw);
+      if (credData.attributes && credData.attributes.alias) {
+        return String(credData.attributes.alias);
+      }
+    } catch (_) {}
+  }
+  return '';
+}
+
+function populateDoorAndUserFilters(entries) {
+  try {
+    const doorSet = new Set();
+    const userSet = new Set();
+    (entries || []).forEach(e => {
+      if (e.type === 'audit-auth-event') {
+        if (e.door_alias) doorSet.add(normalizeDoorAlias(e.door_alias));
+        const userAlias = deriveUserAliasFromEntry(e);
+        if (userAlias) userSet.add(userAlias);
+      }
+    });
+
+    const doors = Array.from(doorSet).sort((a,b) => a.localeCompare(b));
+    const users = Array.from(userSet).sort((a,b) => a.localeCompare(b));
+
+    const doorContainer = $('#doorFilters');
+    doorContainer.empty();
+    doors.forEach((door, idx) => {
+      const id = `doorOption_${idx}`;
+      const checked = window.selectedDoorAliases.includes(door) ? 'checked' : '';
+      doorContainer.append(`
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="${door}" id="${id}" ${checked}>
+          <label class="form-check-label" for="${id}">${door}</label>
+        </div>
+      `);
+    });
+
+    const userContainer = $('#userFilters');
+    userContainer.empty();
+    users.forEach((user, idx) => {
+      const id = `userOption_${idx}`;
+      const checked = window.selectedUserAliases.includes(user) ? 'checked' : '';
+      userContainer.append(`
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="${user}" id="${id}" ${checked}>
+          <label class="form-check-label" for="${id}">${user}</label>
+        </div>
+      `);
+    });
+
+    // Restore access radio selection
+    const status = window.selectedAccessStatus || 'all';
+    $(`input[name="accessStatus"][value="${status}"]`).prop('checked', true);
+  } catch (e) {
+    console.error('Failed to populate door/user filters', e);
+  }
+}
+
+function updateFiltersBadges() {
+  const parts = [];
+  if (window.filterStartEpoch || window.filterEndEpoch) parts.push('time');
+  if (window.selectedDoorAliases && window.selectedDoorAliases.length) parts.push(`${window.selectedDoorAliases.length} door${window.selectedDoorAliases.length>1?'s':''}`);
+  if (window.selectedUserAliases && window.selectedUserAliases.length) parts.push(`${window.selectedUserAliases.length} user${window.selectedUserAliases.length>1?'s':''}`);
+  if (window.selectedAccessStatus && window.selectedAccessStatus !== 'all') parts.push(window.selectedAccessStatus);
+  const text = parts.length ? `Filters: ${parts.join(', ')}` : '';
+  if (text) {
+    $('#activeFiltersBadge').text(text);
+    $('#activeFiltersHeaderBadge').text(text).show();
+  } else {
+    $('#activeFiltersBadge').text('');
+    $('#activeFiltersHeaderBadge').hide().text('');
+  }
 }
 
 // Generate row for Credential Management tab (Credential Events only)
@@ -1527,7 +1706,11 @@ function updatePagination() {
 function changePage(page) {
   if (page >= 1 && page <= totalPages) {
     currentPage = page;
-    loadTabData(currentTab);
+    if (window.isFiltering) {
+      displayTabData(currentTab);
+    } else {
+      loadTabData(currentTab);
+    }
   }
 }
 

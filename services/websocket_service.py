@@ -2112,7 +2112,7 @@ class LeosacWebSocketService:
       logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
-  def get_audit_logs(self, enabled_types=None, page=1, page_size=20, search_term=None):
+  def get_audit_logs(self, enabled_types=None, page=1, page_size=20, search_term=None, start_ts=None, end_ts=None):
     """Get audit logs (thread-safe)"""
     logger.info("=== GETTING AUDIT LOGS ===")
     try:
@@ -2142,10 +2142,18 @@ class LeosacWebSocketService:
       if search_term and search_term.strip():
         logger.info(f"Search term '{search_term}' will be processed client-side (server doesn't support search)")
         
+      # Add time range if provided. Server supports adding raw SQL conditions via extra clauses.
+      # We extend request with 'start_ts' and 'end_ts' handled server-side if supported.
+      if start_ts:
+        request_params['start_ts'] = int(start_ts)
+      if end_ts:
+        request_params['end_ts'] = int(end_ts)
+
       logger.info(f"=== AUDIT LOG REQUEST ===")
       logger.info(f"Page: {page}, Page Size: {page_size}")
       logger.info(f"Enabled Types: {enabled_types}")
       logger.info(f"Search Term: {search_term} (client-side processing)")
+      logger.info(f"Start TS: {start_ts}, End TS: {end_ts}")
       logger.info(f"Request params: {request_params}")
       
       result = self._run_in_websocket_thread('audit.get', request_params)

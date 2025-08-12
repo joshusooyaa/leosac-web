@@ -40,19 +40,23 @@ def get_audit_logs():
                 except Exception:
                     enabled_types = [v.strip() for v in raw_enabled.split(',') if v.strip()]
         search_term = request.args.get('search', '')
+        start_ts = request.args.get('start_ts', type=int)
+        end_ts = request.args.get('end_ts', type=int)
         
         # If no types specified, get all types
         if not enabled_types:
             enabled_types = leosac_client.get_audit_event_types()
         
-        logger.info(f"Fetching audit logs: page={page}, page_size={page_size}, types={enabled_types}, search='{search_term}'")
+        logger.info(f"Fetching audit logs: page={page}, page_size={page_size}, types={enabled_types}, search='{search_term}', start_ts={start_ts}, end_ts={end_ts}")
         
         # Get audit logs from WebSocket service
         result = leosac_client.get_audit_logs(
             enabled_types=enabled_types,
             page=page,
             page_size=page_size,
-            search_term=search_term
+            search_term=search_term,
+            start_ts=start_ts,
+            end_ts=end_ts
         )
         
         if result and 'entries' in result:
