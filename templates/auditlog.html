@@ -29,9 +29,9 @@
         </div>
         <div class="card-body">
           <!-- Summary Statistics -->
-          <div class="row mb-3" id="summaryStats" style="display: none;">
+            <div class="row mb-3" id="summaryStats" style="display: none;">
             <div class="col-md-3">
-              <div class="card bg-primary text-white">
+              <div class="card metric-card metric-card--total">
                 <div class="card-body text-center">
                   <h5 id="totalAuthEvents">0</h5>
                   <small>Total Auth Events</small>
@@ -39,7 +39,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card bg-success text-white">
+              <div class="card metric-card metric-card--granted">
                 <div class="card-body text-center">
                   <h5 id="accessGranted">0</h5>
                   <small>Access Granted</small>
@@ -47,7 +47,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card bg-danger text-white">
+              <div class="card metric-card metric-card--denied">
                 <div class="card-body text-center">
                   <h5 id="accessDenied">0</h5>
                   <small>Access Denied</small>
@@ -55,7 +55,7 @@
               </div>
             </div>
             <div class="col-md-3">
-              <div class="card bg-info text-white">
+              <div class="card metric-card metric-card--unique">
                 <div class="card-body text-center">
                   <h5 id="uniqueCredentials">0</h5>
                   <small>Unique Credentials</small>
@@ -80,32 +80,32 @@
           
           <!-- Event Type Tabs -->
           <ul class="nav nav-tabs" id="eventTypeTabs" role="tablist">
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link active" id="access-tab" data-toggle="tab" href="#access" role="tab" aria-controls="access" aria-selected="true">
                 <i class="fas fa-key"></i> Access Control
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link" id="credential-tab" data-toggle="tab" href="#credential" role="tab" aria-controls="credential" aria-selected="false">
                 <i class="fas fa-id-card"></i> Credential Management
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link" id="user-tab" data-toggle="tab" href="#user" role="tab" aria-controls="user" aria-selected="false">
                 <i class="fas fa-user"></i> User Management
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link" id="door-tab" data-toggle="tab" href="#door" role="tab" aria-controls="door" aria-selected="false">
                 <i class="fas fa-door-open"></i> Door Management
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link" id="group-tab" data-toggle="tab" href="#group" role="tab" aria-controls="group" aria-selected="false">
                 <i class="fas fa-users"></i> Group Management
               </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item flex-fill text-center">
               <a class="nav-link" id="schedule-tab" data-toggle="tab" href="#schedule" role="tab" aria-controls="schedule" aria-selected="false">
                 <i class="fas fa-calendar"></i> Schedule Management
               </a>
@@ -1743,4 +1743,42 @@ function hideError() {
   $('#errorMessage').hide();
 }
 </script>
+<style>
+  /* Softer metric cards matching global theme */
+  .metric-card { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 12px; }
+  .metric-card--total { background: linear-gradient(180deg, rgba(86, 207, 225, 0.10), rgba(86, 207, 225, 0.05)); border-color: rgba(86, 207, 225, 0.25); }
+  .metric-card--granted { background: linear-gradient(180deg, rgba(52, 195, 143, 0.10), rgba(52, 195, 143, 0.05)); border-color: rgba(52, 195, 143, 0.25); }
+  .metric-card--denied { background: linear-gradient(180deg, rgba(239, 71, 111, 0.10), rgba(239, 71, 111, 0.05)); border-color: rgba(239, 71, 111, 0.25); }
+  .metric-card--unique { background: linear-gradient(180deg, rgba(79, 107, 237, 0.10), rgba(79, 107, 237, 0.05)); border-color: rgba(79, 107, 237, 0.25); }
+  .metric-card h5 { font-weight: 700; }
+  .metric-card small { color: var(--text-muted); }
+
+  /* Buttons in dark theme */
+  #refreshBtn { color: var(--text); border-color: var(--border); }
+  #refreshBtn:hover { background: rgba(255,255,255,0.04); }
+  #applyFilters { background: var(--primary); border-color: var(--primary-600); }
+  #applyFilters:hover { background: var(--primary-600); }
+
+  /* Modal theming */
+  #filterModal .modal-content, #detailsModal .modal-content {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  #filterModal .modal-header, #detailsModal .modal-header {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  #filterModal .modal-footer, #detailsModal .modal-footer {
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+  }
+  #filterModal label { color: var(--text-muted); }
+  .form-check-label { color: var(--text); }
+
+  /* Table tweaks for tighter spacing */
+  #accessTable td, #accessTable th {
+    vertical-align: middle;
+  }
+</style>
 {% endblock %} 
