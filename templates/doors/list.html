@@ -10,94 +10,59 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Door List</h5>
-                    <a href="{{ url_for('doors_create') }}" class="btn btn-primary">
+                    <a href="{{ url_for('doors.doors_create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Door
                     </a>
                 </div>
                 <div class="card-body">
+                    {% if doors %}
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <table class="table table-hover" id="dataTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Alias</th>
+                                    <th>Door</th>
                                     <th>Description</th>
                                     <th>Access Point</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="doorsTableBody">
+                            <tbody>
+                                {% for door in doors %}
                                 <tr>
-                                    <td colspan="5" class="text-center">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="sr-only">Loading...</span>
+                                    <td>{{ door.id }}</td>
+                                    <td>{{ door.attributes.alias or 'N/A' }}</td>
+                                    <td>{{ door.attributes.description or '' }}</td>
+                                    <td>{{ door.attributes.access_point_id or 'None' }}</td>
+                                    <td>
+                                        <div class="btn-actions" role="group">
+                                            <a href="{{ url_for('doors.door_detail', door_id=door.id) }}" class="btn btn-outline-info btn-icon" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('doors.door_edit', door_id=door.id) }}" class="btn btn-outline-warning btn-icon" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('doors.door_delete', door_id=door.id) }}" style="display:inline;" onsubmit="return confirm(`Delete door {{ (door.alias or door.id)|e }}?`);">
+                                                <button type="submit" class="btn btn-outline-danger btn-icon" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
                                         </div>
-                                        Loading doors...
                                     </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i> No doors found.
+                        <a href="{{ url_for('doors.doors_create') }}" class="alert-link">Create your first door</a>.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch doors from the server
-    fetch('/api/doors')
-        .then(response => response.json())
-        .then(data => {
-            const tbody = document.getElementById('doorsTableBody');
-            
-            if (data.doors && data.doors.length > 0) {
-                tbody.innerHTML = '';
-                data.doors.forEach(door => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${door.id}</td>
-                        <td>${door.alias || 'N/A'}</td>
-                        <td>${door.description || 'N/A'}</td>
-                        <td>${door.access_point_id || 'None'}</td>
-                        <td>
-                            <a href="/doors/${door.id}" class="btn btn-sm btn-info">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                            <a href="/doors/${door.id}/edit" class="btn btn-sm btn-warning">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } else {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i> No doors found. 
-                                <a href="{{ url_for('doors_create') }}" class="alert-link">Create your first door</a>.
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching doors:', error);
-            const tbody = document.getElementById('doorsTableBody');
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center">
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i> Error loading doors: ${error.message}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-});
-</script>
 {% endblock %} 

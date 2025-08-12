@@ -91,77 +91,67 @@
             <div class="col-12">
               <h5>Mappings</h5>
               {% if schedule.mapping %}
-                <div class="accordion" id="mappingsAccordion">
-                  {% for mapping in schedule.mapping %}
-                    <div class="card">
-                      <div class="card-header" id="mapping{{ mapping.id }}">
-                        <h6 class="mb-0">
-                          <button class="btn btn-link" type="button" data-toggle="collapse" 
-                                  data-target="#collapse{{ mapping.id }}">
-                            Mapping: {{ mapping.alias }}
-                          </button>
-                        </h6>
+                {% for mapping in schedule.mapping %}
+                <div class="card mb-3">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Mapping: {{ mapping.alias }}</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <h6>Users</h6>
+                        {% if mapping.users %}
+                          <div class="border rounded p-2">
+                            {% for user_id in mapping.users %}
+                              <div><i class="fas fa-user"></i> User ID: {{ user_id }}</div>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <p class="text-muted">No users mapped</p>
+                        {% endif %}
                       </div>
-                      <div id="collapse{{ mapping.id }}" class="collapse" 
-                           data-parent="#mappingsAccordion">
-                        <div class="card-body">
-                          <div class="row">
-                            <div class="col-md-6">
-                              <h6>Users ({{ mapping.users|length }})</h6>
-                              {% if mapping.users %}
-                                <ul class="list-unstyled">
-                                  {% for user_id in mapping.users %}
-                                    <li><i class="fas fa-user"></i> User ID: {{ user_id }}</li>
-                                  {% endfor %}
-                                </ul>
-                              {% else %}
-                                <p class="text-muted">No users mapped</p>
-                              {% endif %}
-                            </div>
-                            <div class="col-md-6">
-                              <h6>Groups ({{ mapping.groups|length }})</h6>
-                              {% if mapping.groups %}
-                                <ul class="list-unstyled">
-                                  {% for group_id in mapping.groups %}
-                                    <li><i class="fas fa-users"></i> Group ID: {{ group_id }}</li>
-                                  {% endfor %}
-                                </ul>
-                              {% else %}
-                                <p class="text-muted">No groups mapped</p>
-                              {% endif %}
-                            </div>
+                      <div class="col-md-6">
+                        <h6>Groups</h6>
+                        {% if mapping.groups %}
+                          <div class="border rounded p-2">
+                            {% for group_id in mapping.groups %}
+                              <div><i class="fas fa-users"></i> Group ID: {{ group_id }}</div>
+                            {% endfor %}
                           </div>
-                          <div class="row mt-3">
-                            <div class="col-md-6">
-                              <h6>Credentials ({{ mapping.credentials|length }})</h6>
-                              {% if mapping.credentials %}
-                                <ul class="list-unstyled">
-                                  {% for cred_id in mapping.credentials %}
-                                    <li><i class="fas fa-key"></i> Credential ID: {{ cred_id }}</li>
-                                  {% endfor %}
-                                </ul>
-                              {% else %}
-                                <p class="text-muted">No credentials mapped</p>
-                              {% endif %}
-                            </div>
-                            <div class="col-md-6">
-                              <h6>Doors ({{ mapping.doors|length }})</h6>
-                              {% if mapping.doors %}
-                                <ul class="list-unstyled">
-                                  {% for door_id in mapping.doors %}
-                                    <li><i class="fas fa-door-open"></i> Door ID: {{ door_id }}</li>
-                                  {% endfor %}
-                                </ul>
-                              {% else %}
-                                <p class="text-muted">No doors mapped</p>
-                              {% endif %}
-                            </div>
-                          </div>
-                        </div>
+                        {% else %}
+                          <p class="text-muted">No groups mapped</p>
+                        {% endif %}
                       </div>
                     </div>
-                  {% endfor %}
+                    <div class="row mt-3">
+                      <div class="col-md-6">
+                        <h6>Credentials</h6>
+                        {% if mapping.credentials %}
+                          <div class="border rounded p-2">
+                            {% for cred_id in mapping.credentials %}
+                              <div><i class="fas fa-key"></i> Credential ID: {{ cred_id }}</div>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <p class="text-muted">No credentials mapped</p>
+                        {% endif %}
+                      </div>
+                      <div class="col-md-6">
+                        <h6>Doors</h6>
+                        {% if mapping.doors %}
+                          <div class="border rounded p-2">
+                            {% for door_id in mapping.doors %}
+                              <div><i class="fas fa-door-open"></i> Door ID: {{ door_id }}</div>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <p class="text-muted">No doors mapped</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+                {% endfor %}
               {% else %}
                 <div class="alert alert-info">
                   <i class="fas fa-info-circle"></i>
