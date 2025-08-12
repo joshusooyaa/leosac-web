@@ -2112,7 +2112,7 @@ class LeosacWebSocketService:
       logger.error(f"Traceback: {traceback.format_exc()}")
       return False, {'error': str(e)}
 
-  def get_audit_logs(self, enabled_types=None, page=1, page_size=20):
+  def get_audit_logs(self, enabled_types=None, page=1, page_size=20, search_term=None):
     """Get audit logs (thread-safe)"""
     logger.info("=== GETTING AUDIT LOGS ===")
     try:
@@ -2136,10 +2136,16 @@ class LeosacWebSocketService:
       # Add enabled types if specified - use 'enabled_type' (singular) as expected by server
       if enabled_types:
         request_params['enabled_type'] = enabled_types
+      
+      # Note: Leosac server doesn't support search parameter, so we'll implement client-side search
+      # The search_term is logged for debugging but not sent to server
+      if search_term and search_term.strip():
+        logger.info(f"Search term '{search_term}' will be processed client-side (server doesn't support search)")
         
       logger.info(f"=== AUDIT LOG REQUEST ===")
       logger.info(f"Page: {page}, Page Size: {page_size}")
       logger.info(f"Enabled Types: {enabled_types}")
+      logger.info(f"Search Term: {search_term} (client-side processing)")
       logger.info(f"Request params: {request_params}")
       
       result = self._run_in_websocket_thread('audit.get', request_params)
@@ -2196,6 +2202,29 @@ class LeosacWebSocketService:
       entry_type = entry.get('type', '')
       attributes = entry.get('attributes', {})
       relationships = entry.get('relationships', {})
+
+      def _first_rel_id(rel_key: str):
+        try:
+          rel = relationships.get(rel_key, [])
+          if isinstance(rel, dict):
+            rel = [rel]
+          if isinstance(rel, list) and len(rel) > 0:
+            rel_item = rel[0]
+            if isinstance(rel_item, dict):
+              return rel_item.get('id')
+        except Exception:
+          pass
+        return None
+
+      def _safe_json(obj):
+        try:
+          if not obj:
+            return None
+          if isinstance(obj, (dict, list)):
+            return obj
+          return json.loads(obj)
+        except Exception:
+          return None
       
       # Extract common fields
       processed_entry = {
@@ -2210,62 +2239,102 @@ class LeosacWebSocketService:
       
       # Process different audit entry types
       if entry_type == 'audit-user-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_username = (
+          after_json.get('attributes', {}).get('username') or
+          before_json.get('attributes', {}).get('username')
+        )
         processed_entry.update({
-          'target_user_id': attributes.get('target_id'),
-          'target_username': attributes.get('target_username'),
+          'target_user_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_username': attributes.get('target_username') or target_username,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'User Management'
         })
-      elif entry_type == 'audit-wsapicall-event':
-        # Skip websocket API call events - user doesn't want to see them
-        return None
+
       elif entry_type == 'audit-door-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_alias = (
+          after_json.get('attributes', {}).get('alias') or
+          before_json.get('attributes', {}).get('alias')
+        )
         processed_entry.update({
-          'target_door_id': attributes.get('target_id'),
-          'target_door_alias': attributes.get('target_alias'),
+          'target_door_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_door_alias': attributes.get('target_alias') or target_alias,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Door Management'
         })
       elif entry_type == 'audit-group-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_name = (
+          after_json.get('attributes', {}).get('name') or
+          before_json.get('attributes', {}).get('name')
+        )
         processed_entry.update({
-          'target_group_id': attributes.get('target_id'),
-          'target_group_name': attributes.get('target_name'),
+          'target_group_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_group_name': attributes.get('target_name') or target_name,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Group Management'
         })
       elif entry_type == 'audit-credential-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_alias = (
+          after_json.get('attributes', {}).get('alias') or
+          before_json.get('attributes', {}).get('alias')
+        )
         processed_entry.update({
-          'target_credential_id': attributes.get('target_id'),
-          'target_credential_alias': attributes.get('target_alias'),
+          'target_credential_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_credential_alias': attributes.get('target_alias') or target_alias,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Credential Management'
         })
       elif entry_type == 'audit-schedule-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_name = (
+          after_json.get('attributes', {}).get('name') or
+          before_json.get('attributes', {}).get('name')
+        )
         processed_entry.update({
-          'target_schedule_id': attributes.get('target_id'),
-          'target_schedule_name': attributes.get('target_name'),
+          'target_schedule_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_schedule_name': attributes.get('target_name') or target_name,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Schedule Management'
         })
       elif entry_type == 'audit-user-group-membership-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
         processed_entry.update({
-          'target_user_id': attributes.get('target_user_id'),
-          'target_group_id': attributes.get('target_group_id'),
-          'target_user_username': attributes.get('target_user_username'),
-          'target_group_name': attributes.get('target_group_name'),
+          'target_user_id': attributes.get('target_user_id') or _first_rel_id('user'),
+          'target_group_id': attributes.get('target_group_id') or _first_rel_id('group'),
+          'target_user_username': attributes.get('target_user_username') or (
+            after_json.get('attributes', {}).get('username') or before_json.get('attributes', {}).get('username')
+          ),
+          'target_group_name': attributes.get('target_group_name') or (
+            after_json.get('attributes', {}).get('name') or before_json.get('attributes', {}).get('name')
+          ),
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Membership Management'
         })
       elif entry_type == 'audit-zone-event':
+        after_json = _safe_json(attributes.get('after')) or {}
+        before_json = _safe_json(attributes.get('before')) or {}
+        target_alias = (
+          after_json.get('attributes', {}).get('alias') or
+          before_json.get('attributes', {}).get('alias')
+        )
         processed_entry.update({
-          'target_zone_id': attributes.get('target_id'),
-          'target_zone_alias': attributes.get('target_alias'),
+          'target_zone_id': attributes.get('target_id') or _first_rel_id('target'),
+          'target_zone_alias': attributes.get('target_alias') or target_alias,
           'before': attributes.get('before'),
           'after': attributes.get('after'),
           'event_category': 'Zone Management'
@@ -2351,7 +2420,6 @@ class LeosacWebSocketService:
     """Get available audit event types"""
     return [
       'Leosac::Audit::UserEvent',
-      'Leosac::Audit::WSAPICall',
       'Leosac::Audit::DoorEvent',
       'Leosac::Audit::GroupEvent',
       'Leosac::Audit::CredentialEvent',
@@ -2361,5 +2429,81 @@ class LeosacWebSocketService:
       'Leosac::Audit::UpdateEvent',
       'Leosac::Audit::AuthEvent'
     ]
+
+  def get_audit_statistics(self, search_term=None):
+    """Get total audit statistics across all entries (thread-safe)"""
+    logger.info("=== GETTING AUDIT STATISTICS ===")
+    try:
+      auth_state = self.get_auth_state()
+      logger.debug(f"Auth state for audit statistics: {auth_state}")
+      
+      if not auth_state['connected']:
+        logger.error("✗ WebSocket not connected")
+        return {'total_auth': 0, 'granted': 0, 'denied': 0, 'unique_credentials': 0}
+      
+      if not auth_state['authenticated']:
+        logger.error("✗ Not authenticated")
+        return {'total_auth': 0, 'granted': 0, 'denied': 0, 'unique_credentials': 0}
+      
+      # Get all auth events (no pagination) to calculate totals
+      request_params = {
+        'p': 1,
+        'ps': 10000,  # Large page size to get all events
+        'enabled_type': ['Leosac::Audit::AuthEvent']  # Only auth events for statistics
+      }
+      
+      # Add search term if specified
+      if search_term and search_term.strip():
+        request_params['search'] = search_term.strip()
+      
+      logger.info(f"Getting all auth events for statistics with params: {request_params}")
+      
+      result = self._run_in_websocket_thread('audit.get', request_params)
+      
+      if result and 'data' in result:
+        auth_entries = result.get('data', [])
+        logger.info(f"Retrieved {len(auth_entries)} auth events for statistics")
+        
+        # Calculate statistics
+        total_auth = len(auth_entries)
+        granted = 0
+        denied = 0
+        unique_credentials = set()
+        
+        for entry in auth_entries:
+          # Parse access granted from description
+          description = entry.get('attributes', {}).get('description', '')
+          access_granted = self._parse_access_granted_from_description(description)
+          
+          if access_granted == True:
+            granted += 1
+          elif access_granted == False:
+            denied += 1
+          
+          # Extract credential ID from relationships
+          relationships = entry.get('relationships', {})
+          credential_data = relationships.get('credential', [])
+          if credential_data and len(credential_data) > 0:
+            credential_id = credential_data[0].get('id')
+            if credential_id:
+              unique_credentials.add(credential_id)
+        
+        stats = {
+          'total_auth': total_auth,
+          'granted': granted,
+          'denied': denied,
+          'unique_credentials': len(unique_credentials)
+        }
+        
+        logger.info(f"✓ Calculated statistics: {stats}")
+        return stats
+      else:
+        logger.warning("✗ No auth events data for statistics")
+        return {'total_auth': 0, 'granted': 0, 'denied': 0, 'unique_credentials': 0}
+        
+    except Exception as e:
+      logger.error(f"✗ Error getting audit statistics: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return {'total_auth': 0, 'granted': 0, 'denied': 0, 'unique_credentials': 0}
 
 leosac_client = LeosacWebSocketService()

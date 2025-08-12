@@ -4,6 +4,7 @@
 {% block page_title %}Audit Log{% endblock %}
 
 {% block content %}
+
 <div class="col-lg-12 col-md-12">
   <div class="row">
     <div class="col-md-12">
@@ -14,11 +15,14 @@
               <h5 class="mb-0">Audit Log</h5>
             </div>
             <div class="col-md-6 text-right">
-              <div class="input-group input-group-sm" style="max-width: 300px; float: right;">
+              <div class="input-group input-group-sm" style="max-width: 350px; float: right;">
                 <input type="text" class="form-control" id="searchInput" placeholder="Search in descriptions...">
                 <div class="input-group-append">
                   <button class="btn btn-outline-secondary" type="button" id="searchBtn">
                     <i class="fas fa-search"></i>
+                  </button>
+                  <button class="btn btn-outline-warning" type="button" id="clearSearchBtn" style="display: none;">
+                    <i class="fas fa-times"></i>
                   </button>
                 </div>
               </div>
@@ -82,25 +86,179 @@
             <span id="errorText"></span>
           </div>
           
-          <!-- Audit logs table -->
-          <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="auditTable" width="100%" cellspacing="0">
-              <thead class="thead-light">
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Access</th>
-                  <th>User</th>
-                  <th>Card Credentials</th>
-                  <th>Door</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody id="auditTableBody">
-                <tr>
-                  <td colspan="6" class="text-center">Loading audit logs...</td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Event Type Tabs -->
+          <ul class="nav nav-tabs" id="eventTypeTabs" role="tablist">
+            <li class="nav-item">
+              <a class="nav-link active" id="access-tab" data-toggle="tab" href="#access" role="tab" aria-controls="access" aria-selected="true">
+                <i class="fas fa-key"></i> Access Control
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="credential-tab" data-toggle="tab" href="#credential" role="tab" aria-controls="credential" aria-selected="false">
+                <i class="fas fa-id-card"></i> Credential Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="user-tab" data-toggle="tab" href="#user" role="tab" aria-controls="user" aria-selected="false">
+                <i class="fas fa-user"></i> User Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="door-tab" data-toggle="tab" href="#door" role="tab" aria-controls="door" aria-selected="false">
+                <i class="fas fa-door-open"></i> Door Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="group-tab" data-toggle="tab" href="#group" role="tab" aria-controls="group" aria-selected="false">
+                <i class="fas fa-users"></i> Group Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" id="schedule-tab" data-toggle="tab" href="#schedule" role="tab" aria-controls="schedule" aria-selected="false">
+                <i class="fas fa-calendar"></i> Schedule Management
+              </a>
+            </li>
+          </ul>
+          
+          <!-- Tab Content -->
+          <div class="tab-content" id="eventTypeTabContent">
+            <!-- Access Control Tab -->
+            <div class="tab-pane fade show active" id="access" role="tabpanel" aria-labelledby="access-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="accessTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Access</th>
+                      <th>User</th>
+                      <th>Card Credentials</th>
+                      <th>Door</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accessTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading access events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Credential Management Tab -->
+            <div class="tab-pane fade" id="credential" role="tabpanel" aria-labelledby="credential-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="credentialTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>Credential ID</th>
+                      <th>Credential Alias</th>
+                      <th>Author</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="credentialTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading credential events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- User Management Tab -->
+            <div class="tab-pane fade" id="user" role="tabpanel" aria-labelledby="user-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="userTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>User ID</th>
+                      <th>Username</th>
+                      <th>Author</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading user events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Door Management Tab -->
+            <div class="tab-pane fade" id="door" role="tabpanel" aria-labelledby="door-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="doorTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>Door ID</th>
+                      <th>Door Alias</th>
+                      <th>Author</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="doorTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading door events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Group Management Tab -->
+            <div class="tab-pane fade" id="group" role="tabpanel" aria-labelledby="group-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="groupTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>Group ID</th>
+                      <th>Group Name</th>
+                      <th>Author</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="groupTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading group events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Schedule Management Tab -->
+            <div class="tab-pane fade" id="schedule" role="tabpanel" aria-labelledby="schedule-tab">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="scheduleTable" width="100%" cellspacing="0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Action</th>
+                      <th>Schedule ID</th>
+                      <th>Schedule Name</th>
+                      <th>Author</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleTableBody">
+                    <tr>
+                      <td colspan="6" class="text-center">Loading schedule events...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           
           <!-- Pagination -->
@@ -217,7 +375,157 @@ let pageSize = 20;
 let totalPages = 0;
 let totalEntries = 0;
 let enabledTypes = [];
+let currentTab = 'access'; // Track current active tab
 let currentAuditData = [];
+let allAuditData = []; // Store all fetched data for client-side search
+let isSearching = false; // Track if we're currently searching
+let currentSearchTerm = ''; // Track current search term
+
+// Tab-specific data storage
+let tabData = {
+  access: { entries: [], meta: {} },
+  credential: { entries: [], meta: {} },
+  user: { entries: [], meta: {} },
+  door: { entries: [], meta: {} },
+  group: { entries: [], meta: {} },
+  schedule: { entries: [], meta: {} }
+};
+
+// Safely parse JSON stored as string in 'before'/'after'
+function parseState(jsonStr) {
+  if (!jsonStr) return null;
+  try {
+    if (typeof jsonStr === 'object') return jsonStr;
+    return JSON.parse(jsonStr);
+  } catch (_) {
+    return null;
+  }
+}
+
+// Decide action based on before/after first, falling back to description
+function computeAction(entry) {
+  const beforeObj = parseState(entry.before);
+  const afterObj = parseState(entry.after);
+  // If there's a non-empty before, consider it an update (server sometimes mislabels)
+  if (beforeObj) return 'Updated';
+  if (afterObj && !beforeObj) return 'Created';
+  if (!afterObj && beforeObj) return 'Deleted';
+  const desc = (entry.description || '').toLowerCase();
+  if (desc.includes('deleted')) return 'Deleted';
+  if (desc.includes('updated')) return 'Updated';
+  if (desc.includes('created')) return 'Created';
+  return 'Unknown';
+}
+
+function safeStringify(obj) {
+  try {
+    return JSON.stringify(obj, null, 2);
+  } catch (_) {
+    try { return String(obj); } catch (_) { return '' }
+  }
+}
+
+function htmlEscape(val) {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatDescription(desc) {
+  if (!desc) return 'No description available';
+  try {
+    // Unescape common sequences for readability
+    const unescaped = String(desc)
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/\\"/g, '"');
+
+    // Try to detect a JSON object embedded in the description and render it nicely
+    const jsonMatch = unescaped.match(/\{[^}]*\}/);
+    if (jsonMatch) {
+      try {
+        const obj = JSON.parse(jsonMatch[0]);
+        // Build a compact human-friendly label
+        const primary = obj.alias || obj.username || obj.name || '';
+        const type = obj.type ? String(obj.type) : '';
+        const id = (obj.id !== undefined && obj.id !== null) ? `#${obj.id}` : '';
+        const parts = [];
+        if (type) parts.push(type);
+        if (id) parts.push(id);
+        const meta = parts.length ? ` (${parts.join(' ')})` : '';
+        const pretty = `${primary || (type || 'Object')}${meta}`.trim();
+        const before = unescaped.slice(0, jsonMatch.index);
+        const after = unescaped.slice(jsonMatch.index + jsonMatch[0].length);
+        return htmlEscape(before + pretty + after);
+      } catch (_) {
+        // Fall through to plain escaped rendering if JSON parse fails
+      }
+    }
+    return htmlEscape(unescaped);
+  } catch (_) {
+    return htmlEscape(String(desc));
+  }
+}
+
+// Produce a nicely formatted raw entry, parsing JSON strings in before/after
+function formatRawEntry(entry) {
+  try {
+    const cloned = JSON.parse(JSON.stringify(entry));
+    // Replace before/after strings with parsed objects if possible
+    const beforeObj = parseState(cloned.before);
+    const afterObj = parseState(cloned.after);
+    if (beforeObj) cloned.before = beforeObj;
+    if (afterObj) cloned.after = afterObj;
+    return htmlEscape(JSON.stringify(cloned, null, 2));
+  } catch (_) {
+    // Fallback: escape the original entry stringified
+    return htmlEscape(safeStringify(entry));
+  }
+}
+
+function computeAttributeDiff(beforeState, afterState) {
+  const diffs = [];
+  if (!beforeState && !afterState) return diffs;
+  const bAttr = (beforeState && beforeState.attributes) ? beforeState.attributes : {};
+  const aAttr = (afterState && afterState.attributes) ? afterState.attributes : {};
+  const keys = Array.from(new Set([].concat(Object.keys(bAttr), Object.keys(aAttr))));
+  keys.forEach(k => {
+    const bv = bAttr[k];
+    const av = aAttr[k];
+    const same = safeStringify(bv) === safeStringify(av);
+    if (!same) {
+      diffs.push({ field: k, before: bv, after: av });
+    }
+  });
+  return diffs;
+}
+
+function renderChangesHTML(entry) {
+  const beforeObj = parseState(entry.before);
+  const afterObj = parseState(entry.after);
+  if (!beforeObj && !afterObj) return '';
+  const diffs = computeAttributeDiff(beforeObj, afterObj);
+  let diffTable = '';
+  if (diffs.length > 0) {
+    diffTable = `
+      <h6>Changed Fields</h6>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+          <thead class="thead-light"><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
+          <tbody>
+            ${diffs.map(d => `<tr><td>${htmlEscape(d.field)}</td><td><code>${htmlEscape(d.before)}</code></td><td><code>${htmlEscape(d.after)}</code></td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  if (!diffTable) return '';
+  return `<hr>${diffTable}`;
+}
 
 // Initialize the page when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -240,12 +548,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     loadEventTypes();
-    loadAuditLogs();
+    
+    // Set up tab change handlers
+    setupTabHandlers();
+    
+    // Load initial data for access tab
+    loadTabData(currentTab);
     
     // Event listeners
     $('#refreshBtn').click(function() {
       console.log('Refresh button clicked');
-      loadAuditLogs();
+      currentPage = 1; // Reset to first page
+      loadTabData(currentTab);
     });
     
     $('#applyFilters').click(function() {
@@ -257,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Page size changed to:', $(this).val());
       pageSize = parseInt($(this).val());
       currentPage = 1;
-      loadAuditLogs();
+      loadTabData(currentTab);
     });
     
     // Search functionality
@@ -270,12 +584,56 @@ document.addEventListener('DOMContentLoaded', function() {
         performSearch();
       }
     });
+    
+    // Clear search functionality
+    $('#clearSearchBtn').click(function() {
+      clearSearch();
+    });
+    
+    // Show/hide clear button based on search input
+    $('#searchInput').on('input', function() {
+      const hasValue = $(this).val().trim().length > 0;
+      $('#clearSearchBtn').toggle(hasValue);
+    });
   } else {
     console.error('jQuery is not loaded!');
     // Show error message to user
     document.getElementById('auditTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error: jQuery not loaded. Please refresh the page.</td></tr>';
   }
 });
+
+// Set up tab change handlers
+function setupTabHandlers() {
+  $('#eventTypeTabs a[data-toggle="tab"]').on('click', function (e) {
+    e.preventDefault();
+    
+    const targetTab = $(this).attr('href').substring(1); // Remove the # from href
+    console.log('Tab clicked:', targetTab);
+    
+    // Update active tab
+    $('#eventTypeTabs a').removeClass('active');
+    $(this).addClass('active');
+    
+    // Hide all tab content
+    $('.tab-pane').removeClass('show active');
+    
+    // Show target tab content
+    $('#' + targetTab).addClass('show active');
+    
+    // Update current tab
+    currentTab = targetTab;
+    // Reset pagination when switching tabs
+    currentPage = 1;
+    
+    // Load data for the selected tab if not already loaded
+    if (tabData[targetTab].entries.length === 0) {
+      loadTabData(targetTab);
+    } else {
+      // Display existing data for this tab
+      displayTabData(targetTab);
+    }
+  });
+}
 
 // Load available event types
 function loadEventTypes() {
@@ -383,181 +741,61 @@ function clearAllFilters() {
   loadAuditLogs();
 }
 
-// Perform search in current data
+// Perform search through current tab data
 function performSearch() {
-  const searchTerm = $('#searchInput').val().toLowerCase();
+  const searchTerm = $('#searchInput').val().trim();
+  
   if (!searchTerm) {
-    // If search is empty, show all entries
-    displayAuditLogs(currentAuditData, {count: currentAuditData.length, total_page: 1});
+    // If search is empty, show all entries for current tab
+    clearSearch();
     return;
   }
   
+  // Reset to first page when searching
+  currentPage = 1;
+  
+  // Perform search on current tab data
+  performClientSideSearch(searchTerm);
+}
+
+// Perform client-side search on current tab data
+function performClientSideSearch(searchTerm) {
+  console.log('Performing client-side search for:', searchTerm);
+  console.log('Searching through current tab data:', currentAuditData.length, 'entries');
+  
+  if (!searchTerm || !searchTerm.trim()) {
+    // No search term, show all data for current tab
+    displayTabData(currentTab);
+    return;
+  }
+  
+  const searchLower = searchTerm.toLowerCase();
   const filteredEntries = currentAuditData.filter(entry => {
-    return (entry.description && entry.description.toLowerCase().includes(searchTerm)) ||
-           (entry.author && entry.author.toLowerCase().includes(searchTerm)) ||
-           (entry.event_category && entry.event_category.toLowerCase().includes(searchTerm)) ||
-           (entry.event_type && entry.event_type.toLowerCase().includes(searchTerm)) ||
-           (entry.credential_id && entry.credential_id.toString().includes(searchTerm)) ||
-           (entry.credential_raw && entry.credential_raw.toLowerCase().includes(searchTerm)) ||
-           (entry.door_alias && entry.door_alias.toLowerCase().includes(searchTerm));
+    return (entry.description && entry.description.toLowerCase().includes(searchLower)) ||
+           (entry.author && entry.author.toLowerCase().includes(searchLower)) ||
+           (entry.event_category && entry.event_category.toLowerCase().includes(searchLower)) ||
+           (entry.event_type && entry.event_type.toLowerCase().includes(searchLower)) ||
+           (entry.credential_id && entry.credential_id.toString().includes(searchLower)) ||
+           (entry.credential_raw && entry.credential_raw.toLowerCase().includes(searchLower)) ||
+           (entry.door_alias && entry.door_alias.toLowerCase().includes(searchLower)) ||
+           (entry.type && entry.type.toLowerCase().includes(searchLower));
   });
   
-  displayAuditLogs(filteredEntries, {count: filteredEntries.length, total_page: 1});
+  console.log('Search results:', filteredEntries.length, 'entries found');
+  
+  // Display filtered results
+  displayAuditLogs(filteredEntries, {count: filteredEntries.length, total_page: 1}, currentTab);
+  
+  // Update statistics based on filtered results
+  updateSummaryStatsFromData(filteredEntries, currentTab);
 }
 
-// Load audit logs
-function loadAuditLogs() {
-  showLoading(true);
-  hideError();
-  
-  const params = {
-    page: currentPage,
-    page_size: pageSize
-  };
-  
-  if (enabledTypes.length > 0) {
-    params['enabled_types'] = enabledTypes;
-  }
-  
-  console.log('Loading audit logs with params:', params);
-  
-  $.ajax({
-    url: '/api/audit/logs',
-    method: 'GET',
-    data: params,
-    success: function(response) {
-      console.log('Audit logs response:', response);
-      showLoading(false);
-      if (response.success) {
-        displayAuditLogs(response.data, response.meta);
-      } else {
-        showError('Failed to load audit logs: ' + response.error);
-      }
-    },
-    error: function(xhr, status, error) {
-      console.error('Audit logs error:', xhr, status, error);
-      showLoading(false);
-      showError('Failed to load audit logs: ' + error);
-    }
-  });
-}
-
-// Display audit logs in table
-function displayAuditLogs(entries, meta) {
-  const tbody = $('#auditTableBody');
-  tbody.empty();
-  
-  // Store current data for details modal
-  currentAuditData = entries;
-  
-  if (entries.length === 0) {
-    tbody.append('<tr><td colspan="6" class="text-center">No audit entries found</td></tr>');
-    return;
-  }
-  
-  entries.forEach(function(entry) {
-    // Add color coding based on event type
-    let badgeClass = 'badge-secondary';
-    if (entry.type === 'audit-auth-event') {
-      badgeClass = entry.access_granted ? 'badge-success' : 'badge-danger';
-    } else if (entry.type === 'audit-user-event') {
-      badgeClass = 'badge-primary';
-    } else if (entry.type === 'audit-door-event') {
-      badgeClass = 'badge-warning';
-    } else if (entry.type === 'audit-credential-event') {
-      badgeClass = 'badge-info';
-    }
-    
-    // Generate access column for auth events
-    let accessColumn = '';
-    if (entry.type === 'audit-auth-event') {
-      const accessStatus = entry.access_granted === true ? 'GRANTED' : entry.access_granted === false ? 'DENIED' : 'UNKNOWN';
-      if (entry.access_granted === true) {
-        accessColumn = `<span class="badge badge-success" style="background-color: #28a745 !important; color: white !important;">${accessStatus}</span>`;
-      } else if (entry.access_granted === false) {
-        accessColumn = `<span class="badge badge-danger" style="background-color: #dc3545 !important; color: white !important;">${accessStatus}</span>`;
-      } else {
-        accessColumn = `<span class="badge badge-secondary" style="background-color: #6c757d !important; color: white !important;">${accessStatus}</span>`;
-      }
-    } else {
-      accessColumn = '<span class="text-muted">N/A</span>';
-    }
-    
-    // Generate card credentials column - show bit representation if available
-    let cardCredentials = '';
-    if (entry.type === 'audit-auth-event' && entry.credential_raw) {
-      try {
-        const credData = JSON.parse(entry.credential_raw);
-        if (credData.attributes && credData.attributes['card-id']) {
-          cardCredentials = credData.attributes['card-id'];
-        } else {
-          cardCredentials = entry.credential_id || 'N/A';
-        }
-      } catch (e) {
-        cardCredentials = entry.credential_id || 'N/A';
-      }
-    } else {
-      cardCredentials = '<span class="text-muted">N/A</span>';
-    }
-    
-    // Generate door column (remove my_leosac. prefix)
-    let doorColumn = '';
-    if (entry.type === 'audit-auth-event' && entry.door_alias) {
-      doorColumn = entry.door_alias.replace('my_leosac.', '');
-    } else {
-      doorColumn = '<span class="text-muted">N/A</span>';
-    }
-    
-    // Generate user column - extract user name from credential data
-    let userColumn = '';
-    if (entry.type === 'audit-auth-event' && entry.credential_raw) {
-      try {
-        const credData = JSON.parse(entry.credential_raw);
-        if (credData.attributes && credData.attributes.alias) {
-          userColumn = credData.attributes.alias;
-        } else {
-          userColumn = '<span class="text-muted">N/A</span>';
-        }
-      } catch (e) {
-        userColumn = '<span class="text-muted">N/A</span>';
-      }
-    } else {
-      userColumn = '<span class="text-muted">N/A</span>';
-    }
-    
-    const row = $(`
-      <tr>
-        <td>${entry.formatted_timestamp || 'N/A'}</td>
-        <td>${accessColumn}</td>
-        <td>${userColumn}</td>
-        <td>${cardCredentials}</td>
-        <td>${doorColumn}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
-            <i class="fas fa-eye"></i> Details
-          </button>
-        </td>
-      </tr>
-    `);
-    tbody.append(row);
-  });
-  
-  // Update pagination
-  totalEntries = meta.count || 0;
-  totalPages = meta.total_page || 0;
-  updatePagination();
-  updatePaginationInfo();
-  
-  // Update summary statistics
-  updateSummaryStats(entries);
-}
-
-// Update summary statistics
-function updateSummaryStats(entries) {
-  console.log('Updating summary stats with entries:', entries);
+// Update summary statistics from local data
+function updateSummaryStatsFromData(entries) {
+  console.log('Updating summary stats from local data:', entries.length, 'entries');
   
   const authEvents = entries.filter(entry => entry.type === 'audit-auth-event');
-  console.log('Auth events found:', authEvents);
+  console.log('Auth events found:', authEvents.length);
   
   const totalAuth = authEvents.length;
   const granted = authEvents.filter(entry => entry.access_granted === true).length;
@@ -581,6 +819,516 @@ function updateSummaryStats(entries) {
   
   // Show the summary stats
   $('#summaryStats').show();
+}
+
+// Clear search and show all entries for current tab
+function clearSearch() {
+  $('#searchInput').val('');
+  $('#clearSearchBtn').hide();
+  currentPage = 1;
+  isSearching = false;
+  currentSearchTerm = '';
+  
+  // Load current tab data without search term
+  loadTabData(currentTab);
+}
+
+// Load data for a specific tab (only the event type for that tab)
+function loadTabData(tabName) {
+  console.log('Loading data for tab:', tabName);
+  showLoading(true);
+  hideError();
+  
+  // Map tab names to event types - ONLY load the specific event type for each tab
+  const tabEventTypes = {
+    access: ['Leosac::Audit::AuthEvent'],
+    credential: ['Leosac::Audit::CredentialEvent'],
+    user: ['Leosac::Audit::UserEvent'],
+    door: ['Leosac::Audit::DoorEvent'],
+    group: ['Leosac::Audit::GroupEvent'],
+    schedule: ['Leosac::Audit::ScheduleEvent']
+  };
+  
+  const eventTypes = tabEventTypes[tabName] || [];
+  console.log('Loading event types for tab', tabName, ':', eventTypes);
+  
+  const params = {
+    page: currentPage,
+    page_size: pageSize
+  };
+  
+  if (eventTypes.length > 0) {
+    params['enabled_types'] = eventTypes;
+  }
+  
+  console.log('Loading tab data with params:', params);
+  
+  $.ajax({
+    url: '/api/audit/logs',
+    method: 'GET',
+    traditional: true,
+    data: params,
+    success: function(response) {
+      console.log('Tab data response for', tabName, ':', response);
+      showLoading(false);
+      if (response.success) {
+        // Store data for this tab
+        tabData[tabName] = {
+          entries: response.data,
+          meta: response.meta
+        };
+        
+        // Display the data
+        displayTabData(tabName);
+      } else {
+        showError('Failed to load ' + tabName + ' data: ' + response.error);
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Tab data error:', xhr, status, error);
+      showLoading(false);
+      showError('Failed to load ' + tabName + ' data: ' + error);
+    }
+  });
+}
+
+// Display data for a specific tab
+function displayTabData(tabName) {
+  console.log('Displaying data for tab:', tabName);
+  const data = tabData[tabName];
+  
+  if (!data || !data.entries) {
+    console.error('No data for tab:', tabName);
+    return;
+  }
+  
+  // Update current data and display
+  currentAuditData = data.entries;
+  displayAuditLogs(data.entries, data.meta, tabName);
+  
+  // Update statistics: only show on access tab and compute across all results
+  if (tabName === 'access') {
+    updateSummaryStats();
+  } else {
+    $('#summaryStats').hide();
+  }
+}
+
+// Load audit logs (now just loads the current tab's data)
+function loadAuditLogs(searchTerm = '') {
+  if (searchTerm && searchTerm.trim()) {
+    // Perform search on current tab data
+    performClientSideSearch(searchTerm);
+  } else {
+    // Load current tab data
+    loadTabData(currentTab);
+  }
+}
+
+// Display audit logs in table based on current tab
+function displayAuditLogs(entries, meta, tabName) {
+  // Get the appropriate table body based on current tab
+  const tableBodyId = tabName + 'TableBody';
+  const tbody = $('#' + tableBodyId);
+  
+  if (tbody.length === 0) {
+    console.error('Table body not found for tab:', tabName);
+    return;
+  }
+  
+  tbody.empty();
+  
+  // Store current data for details modal
+  currentAuditData = entries;
+  
+  if (entries.length === 0) {
+    tbody.append(`<tr><td colspan="6" class="text-center">No ${tabName} events found</td></tr>`);
+    return;
+  }
+  
+  entries.forEach(function(entry) {
+    const row = generateTableRow(entry, tabName);
+    tbody.append(row);
+  });
+  
+  // Update pagination
+  totalEntries = meta.count || 0;
+  totalPages = meta.total_page || 0;
+  updatePagination();
+  updatePaginationInfo();
+}
+
+// Generate table row based on event type and tab
+function generateTableRow(entry, tabName) {
+  switch (tabName) {
+    case 'access':
+      return generateAccessRow(entry);
+    case 'credential':
+      return generateCredentialRow(entry);
+    case 'user':
+      return generateUserRow(entry);
+    case 'door':
+      return generateDoorRow(entry);
+    case 'group':
+      return generateGroupRow(entry);
+    case 'schedule':
+      return generateScheduleRow(entry);
+    default:
+      return generateGenericRow(entry);
+  }
+}
+
+// Generate row for Access Control tab (Auth Events only)
+function generateAccessRow(entry) {
+  // Generate access column for auth events
+  let accessColumn = '';
+  if (entry.access_granted === true) {
+    accessColumn = `<span class="badge badge-success" style="background-color: #28a745 !important; color: white !important;">GRANTED</span>`;
+  } else if (entry.access_granted === false) {
+    accessColumn = `<span class="badge badge-danger" style="background-color: #dc3545 !important; color: white !important;">DENIED</span>`;
+  } else {
+    accessColumn = `<span class="badge badge-secondary" style="background-color: #6c757d !important; color: white !important;">UNKNOWN</span>`;
+  }
+  
+  // Generate card credentials column - show bit representation if available
+  let cardCredentials = '';
+  if (entry.credential_raw) {
+    try {
+      const credData = JSON.parse(entry.credential_raw);
+      if (credData.attributes && credData.attributes['card-id']) {
+        cardCredentials = credData.attributes['card-id'];
+      } else {
+        cardCredentials = entry.credential_id || 'N/A';
+      }
+    } catch (e) {
+      cardCredentials = entry.credential_id || 'N/A';
+    }
+  } else {
+    cardCredentials = '<span class="text-muted">N/A</span>';
+  }
+  
+  // Generate door column (remove my_leosac. prefix)
+  let doorColumn = '';
+  if (entry.door_alias) {
+    doorColumn = entry.door_alias.replace('my_leosac.', '');
+  } else {
+    doorColumn = '<span class="text-muted">N/A</span>';
+  }
+  
+  // Generate user column - extract user name from credential data
+  let userColumn = '';
+  if (entry.credential_raw) {
+    try {
+      const credData = JSON.parse(entry.credential_raw);
+      if (credData.attributes && credData.attributes.alias) {
+        userColumn = credData.attributes.alias;
+      } else {
+        userColumn = '<span class="text-muted">N/A</span>';
+      }
+    } catch (e) {
+      userColumn = '<span class="text-muted">N/A</span>';
+    }
+  } else {
+    userColumn = '<span class="text-muted">N/A</span>';
+  }
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td>${accessColumn}</td>
+      <td>${userColumn}</td>
+      <td>${cardCredentials}</td>
+      <td>${doorColumn}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate row for Credential Management tab (Credential Events only)
+function generateCredentialRow(entry) {
+  // Prefer processed fields, then fallback to parsed state or description
+  const state = parseState(entry.after) || parseState(entry.before) || {};
+  const stateAttrs = state.attributes || {};
+
+  const credIdFromDesc = extractIdFromDescription(entry.description);
+  const credAliasFromDesc = extractStringFromDescription(entry.description, 'alias');
+
+  const credentialId = entry.target_credential_id || state.id || credIdFromDesc || 'N/A';
+  const alias = entry.target_credential_alias || stateAttrs.alias || credAliasFromDesc || 'N/A';
+  const action = computeAction(entry);
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="badge badge-info">${action}</span></td>
+      <td>${credentialId}</td>
+      <td>${alias}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate row for User Management tab (User Events only)
+function generateUserRow(entry) {
+  const state = parseState(entry.after) || parseState(entry.before) || {};
+  const stateAttrs = state.attributes || {};
+
+  const userIdFromDesc = extractIdFromDescription(entry.description);
+  const usernameFromDesc = extractStringFromDescription(entry.description, 'username');
+
+  const userId = entry.target_user_id || state.id || userIdFromDesc || 'N/A';
+  const username = entry.target_username || stateAttrs.username || usernameFromDesc || 'N/A';
+  
+  const action = computeAction(entry);
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="badge badge-primary">${action}</span></td>
+      <td>${userId}</td>
+      <td>${username}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate row for Door Management tab (Door Events only)
+function generateDoorRow(entry) {
+  const state = parseState(entry.after) || parseState(entry.before) || {};
+  const stateAttrs = state.attributes || {};
+
+  const doorIdFromDesc = extractIdFromDescription(entry.description);
+  const doorAliasFromDesc = extractStringFromDescription(entry.description, 'alias') || extractStringFromDescription(entry.description, 'name');
+
+  const doorId = entry.target_door_id || state.id || doorIdFromDesc || 'N/A';
+  const doorAlias = entry.target_door_alias || stateAttrs.alias || stateAttrs.name || doorAliasFromDesc || 'N/A';
+  
+  const action = computeAction(entry);
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="badge badge-warning">${action}</span></td>
+      <td>${doorId}</td>
+      <td>${doorAlias}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate row for Group Management tab (Group Events only)
+function generateGroupRow(entry) {
+  const state = parseState(entry.after) || parseState(entry.before) || {};
+  const stateAttrs = state.attributes || {};
+
+  const groupIdFromDesc = extractIdFromDescription(entry.description);
+  const groupNameFromDesc = extractStringFromDescription(entry.description, 'name');
+
+  const groupId = entry.target_group_id || state.id || groupIdFromDesc || 'N/A';
+  const groupName = entry.target_group_name || stateAttrs.name || groupNameFromDesc || 'N/A';
+  
+  const action = computeAction(entry);
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="badge badge-secondary">${action}</span></td>
+      <td>${groupId}</td>
+      <td>${groupName}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate row for Schedule Management tab (Schedule Events only)
+function generateScheduleRow(entry) {
+  const state = parseState(entry.after) || parseState(entry.before) || {};
+  const stateAttrs = state.attributes || {};
+
+  const schedIdFromDesc = extractIdFromDescription(entry.description);
+  const schedNameFromDesc = extractStringFromDescription(entry.description, 'name');
+
+  const scheduleId = entry.target_schedule_id || state.id || schedIdFromDesc || 'N/A';
+  const scheduleName = entry.target_schedule_name || stateAttrs.name || schedNameFromDesc || 'N/A';
+  
+  const action = computeAction(entry);
+  
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="text-muted">${action}</span></td>
+      <td>${scheduleId}</td>
+      <td>${scheduleName}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+
+// Generate generic row for unknown event types
+function generateGenericRow(entry) {
+  return $(`
+    <tr>
+      <td>${entry.formatted_timestamp || 'N/A'}</td>
+      <td><span class="badge badge-secondary">${formatEventType(entry.event_type) || entry.type || 'N/A'}</span></td>
+      <td>${formatDescription(entry.description) || 'N/A'}</td>
+      <td>${entry.author || 'System'}</td>
+      <td>${entry.event_category || 'N/A'}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info" onclick="showDetails('${entry.id}')">
+          <i class="fas fa-eye"></i> Details
+        </button>
+      </td>
+    </tr>
+  `);
+}
+// Extract numeric id from a common description pattern like '{"id":123,...}'
+function extractIdFromDescription(desc) {
+  if (!desc) return null;
+  try {
+    const match = desc.match(/\"id\"\s*:\s*(\d+)/);
+    return match ? match[1] : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Extract a string field value (e.g., alias/name/username) from JSON inside description
+function extractStringFromDescription(desc, field) {
+  if (!desc || !field) return null;
+  try {
+    const regex = new RegExp('\\"' + field + '\\"\\s*:\\s*\\"([^\\"]+)\\"');
+    const match = desc.match(regex);
+    return match ? match[1] : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+
+// Update summary statistics from server
+function updateSummaryStats(searchTerm = '') {
+  // Only for access tab
+  if (currentTab !== 'access') {
+    $('#summaryStats').hide();
+    return;
+  }
+  // If we're currently searching, use local data instead
+  if (isSearching && currentSearchTerm) {
+    console.log('Currently searching, using local statistics');
+    updateSummaryStatsFromData(currentAuditData, currentTab);
+    return;
+  }
+  
+  console.log('Fetching summary statistics from server...');
+  
+  const params = {};
+  if (searchTerm && searchTerm.trim()) {
+    params.search = searchTerm.trim();
+  }
+  
+  $.ajax({
+    url: '/api/audit/statistics',
+    method: 'GET',
+    data: params,
+    success: function(response) {
+      console.log('Statistics response:', response);
+      if (response.success) {
+        const stats = response.data;
+        console.log('Stats received:', stats);
+        
+        // Update the display with total statistics
+        $('#totalAuthEvents').text(stats.total_auth);
+        $('#accessGranted').text(stats.granted);
+        $('#accessDenied').text(stats.denied);
+        $('#uniqueCredentials').text(stats.unique_credentials);
+        
+        // Show the summary stats (access tab only)
+        if (currentTab === 'access') $('#summaryStats').show();
+      } else {
+        console.error('Failed to get statistics:', response.error);
+        // Fallback to showing 0
+        $('#totalAuthEvents').text('0');
+        $('#accessGranted').text('0');
+        $('#accessDenied').text('0');
+        $('#uniqueCredentials').text('0');
+        if (currentTab === 'access') $('#summaryStats').show();
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Statistics error:', xhr, status, error);
+      // Fallback to showing 0
+      $('#totalAuthEvents').text('0');
+      $('#accessGranted').text('0');
+      $('#accessDenied').text('0');
+      $('#uniqueCredentials').text('0');
+      $('#summaryStats').show();
+    }
+  });
+}
+
+// Update summary statistics from local data for specific tab
+function updateSummaryStatsFromData(entries, tabName) {
+  console.log('Updating summary stats for tab', tabName, 'from local data:', entries.length, 'entries');
+  
+  // Only show relevant statistics for the current tab
+  if (tabName === 'access') {
+    // For access tab, show auth event statistics
+    const authEvents = entries.filter(entry => entry.type === 'audit-auth-event');
+    const totalAuth = authEvents.length;
+    const granted = authEvents.filter(entry => entry.access_granted === true).length;
+    const denied = authEvents.filter(entry => entry.access_granted === false).length;
+    
+    // Count unique credentials
+    const uniqueCreds = new Set();
+    authEvents.forEach(entry => {
+      if (entry.credential_id) {
+        uniqueCreds.add(entry.credential_id);
+      }
+    });
+    
+    $('#totalAuthEvents').text(totalAuth);
+    $('#accessGranted').text(granted);
+    $('#accessDenied').text(denied);
+    $('#uniqueCredentials').text(uniqueCreds.size);
+    $('#summaryStats').show();
+  } else {
+    // For other tabs, show total count for that event type
+    const totalCount = entries.length;
+    $('#totalAuthEvents').text(totalCount);
+    $('#accessGranted').text('N/A');
+    $('#accessDenied').text('N/A');
+    $('#uniqueCredentials').text('N/A');
+      if (currentTab === 'access') $('#summaryStats').show();
+  }
 }
 
 // Format event type for display
@@ -656,7 +1404,7 @@ function showDetails(entryId) {
       </div>
       <div class="col-md-6">
         <h6>Description</h6>
-        <p>${entry.description || 'No description available'}</p>
+        <p>${formatDescription(entry.description)}</p>
       </div>
     </div>
   `;
@@ -668,7 +1416,7 @@ function showDetails(entryId) {
       <h6>Access Control Details</h6>
       <table class="table table-sm">
         <tr><td><strong>Credential ID:</strong></td><td>${entry.credential_id || 'N/A'}</td></tr>
-        <tr><td><strong>Credential Raw Data:</strong></td><td>${entry.credential_raw || 'N/A'}</td></tr>
+        <tr><td><strong>Credential Raw Data:</strong></td><td><pre class="mb-0">${entry.credential_raw ? htmlEscape(String(entry.credential_raw).replace(/\\n/g, '\n').replace(/\\t/g, '  ').replace(/\\"/g, '"')) : 'N/A'}</pre></td></tr>
         <tr><td><strong>Door:</strong></td><td>${entry.door_alias || 'N/A'}</td></tr>
         <tr><td><strong>Access:</strong></td><td><span class="badge badge-${entry.access_granted === true ? 'success' : entry.access_granted === false ? 'danger' : 'secondary'}">${entry.access_granted === true ? 'GRANTED' : entry.access_granted === false ? 'DENIED' : 'UNKNOWN'}</span></td></tr>
       </table>
@@ -682,15 +1430,7 @@ function showDetails(entryId) {
         <tr><td><strong>Target Username:</strong></td><td>${entry.target_username || 'N/A'}</td></tr>
       </table>
     `;
-    if (entry.before || entry.after) {
-      detailsHtml += `
-        <h6>Changes</h6>
-        <div class="row">
-          ${entry.before ? `<div class="col-md-6"><strong>Before:</strong><pre class="bg-light p-2">${JSON.stringify(JSON.parse(entry.before), null, 2)}</pre></div>` : ''}
-          ${entry.after ? `<div class="col-md-6"><strong>After:</strong><pre class="bg-light p-2">${JSON.stringify(JSON.parse(entry.after), null, 2)}</pre></div>` : ''}
-        </div>
-      `;
-    }
+    detailsHtml += renderChangesHTML(entry);
   } else if (entry.type === 'audit-door-event') {
     detailsHtml += `
       <hr>
@@ -718,6 +1458,7 @@ function showDetails(entryId) {
         <tr><td><strong>Target Credential Alias:</strong></td><td>${entry.target_credential_alias || 'N/A'}</td></tr>
       </table>
     `;
+    detailsHtml += renderChangesHTML(entry);
   } else if (entry.type === 'audit-user-group-membership-event') {
     detailsHtml += `
       <hr>
@@ -737,7 +1478,7 @@ function showDetails(entryId) {
     <h6>Raw Data</h6>
     <details>
       <summary>Click to view raw entry data</summary>
-      <pre class="bg-light p-2 mt-2">${JSON.stringify(entry, null, 2)}</pre>
+      <pre class="bg-light p-2 mt-2">${formatRawEntry(entry)}</pre>
     </details>
   `;
   
@@ -786,7 +1527,7 @@ function updatePagination() {
 function changePage(page) {
   if (page >= 1 && page <= totalPages) {
     currentPage = page;
-    loadAuditLogs();
+    loadTabData(currentTab);
   }
 }
 

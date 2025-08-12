@@ -24,19 +24,35 @@ def get_audit_logs():
         # Get query parameters
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 20, type=int)
+        # Support multiple client encodings for arrays: enabled_types, enabled_types[]
         enabled_types = request.args.getlist('enabled_types')
+        if not enabled_types:
+            enabled_types = request.args.getlist('enabled_types[]')
+        # Fallback: handle JSON-encoded or comma-separated single param
+        if not enabled_types:
+            raw_enabled = request.args.get('enabled_types')
+            if raw_enabled:
+                try:
+                    import json as _json
+                    parsed = _json.loads(raw_enabled)
+                    if isinstance(parsed, list):
+                        enabled_types = parsed
+                except Exception:
+                    enabled_types = [v.strip() for v in raw_enabled.split(',') if v.strip()]
+        search_term = request.args.get('search', '')
         
         # If no types specified, get all types
         if not enabled_types:
             enabled_types = leosac_client.get_audit_event_types()
         
-        logger.info(f"Fetching audit logs: page={page}, page_size={page_size}, types={enabled_types}")
+        logger.info(f"Fetching audit logs: page={page}, page_size={page_size}, types={enabled_types}, search='{search_term}'")
         
         # Get audit logs from WebSocket service
         result = leosac_client.get_audit_logs(
             enabled_types=enabled_types,
             page=page,
-            page_size=page_size
+            page_size=page_size,
+            search_term=search_term
         )
         
         if result and 'entries' in result:
@@ -70,6 +86,26 @@ def get_audit_event_types():
         })
     except Exception as e:
         logger.error(f"Error getting audit event types: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@audit_bp.route('/api/audit/statistics')
+@login_required
+def get_audit_statistics():
+    """API endpoint to get total audit statistics across all entries"""
+    try:
+        # Get search term from query parameters
+        search_term = request.args.get('search', '')
+        
+        stats = leosac_client.get_audit_statistics(search_term=search_term)
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting audit statistics: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
