@@ -78,6 +78,204 @@
             border-color: rgba(45, 52, 65, 0.55) !important;
             color: var(--text) !important;
         }
+
+        /* Global button styling system - consistent with metric card gradients */
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Primary buttons (Create, Add, Submit, etc.) - matches unique metric tone */
+        .btn-primary {
+            background: linear-gradient(180deg, rgba(79, 107, 237, 0.15), rgba(79, 107, 237, 0.08)) !important;
+            border-color: rgba(79, 107, 237, 0.25) !important;
+            color: rgba(79, 107, 237, 0.9) !important;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(180deg, rgba(79, 107, 237, 0.20), rgba(79, 107, 237, 0.12)) !important;
+            border-color: rgba(79, 107, 237, 0.35) !important;
+            color: rgba(79, 107, 237, 1) !important;
+        }
+
+        /* Success buttons (Create, Save, etc.) - matches granted metric tone */
+        .btn-success {
+            background: linear-gradient(180deg, rgba(52, 195, 143, 0.15), rgba(52, 195, 143, 0.08)) !important;
+            border-color: rgba(52, 195, 143, 0.25) !important;
+            color: rgba(52, 195, 143, 0.9) !important;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(180deg, rgba(52, 195, 143, 0.20), rgba(52, 195, 143, 0.12)) !important;
+            border-color: rgba(52, 195, 143, 0.35) !important;
+            color: rgba(52, 195, 143, 1) !important;
+        }
+
+        /* Info buttons (View, Details, etc.) - matches total metric tone */
+        .btn-info {
+            background: linear-gradient(180deg, rgba(86, 207, 225, 0.15), rgba(86, 207, 225, 0.08)) !important;
+            border-color: rgba(86, 207, 225, 0.25) !important;
+            color: rgba(86, 207, 225, 0.9) !important;
+        }
+
+        .btn-info:hover {
+            background: linear-gradient(180deg, rgba(86, 207, 225, 0.20), rgba(86, 207, 225, 0.12)) !important;
+            border-color: rgba(86, 207, 225, 0.35) !important;
+            color: rgba(86, 207, 225, 1) !important;
+        }
+
+        /* Warning buttons (Edit, Update, etc.) - matches warning metric tone */
+        .btn-warning {
+            background: linear-gradient(180deg, rgba(246, 197, 73, 0.15), rgba(246, 197, 73, 0.08)) !important;
+            border-color: rgba(246, 197, 73, 0.25) !important;
+            color: rgba(246, 197, 73, 0.9) !important;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(180deg, rgba(246, 197, 73, 0.20), rgba(246, 197, 73, 0.12)) !important;
+            border-color: rgba(246, 197, 73, 0.35) !important;
+            color: rgba(246, 197, 73, 1) !important;
+        }
+
+        /* Danger buttons (Delete, Remove, etc.) - matches denied metric tone */
+        .btn-danger {
+            background: linear-gradient(180deg, rgba(239, 71, 111, 0.15), rgba(239, 71, 111, 0.08)) !important;
+            border-color: rgba(239, 71, 111, 0.25) !important;
+            color: rgba(239, 71, 111, 0.9) !important;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(180deg, rgba(239, 71, 111, 0.20), rgba(239, 71, 111, 0.12)) !important;
+            border-color: rgba(239, 71, 111, 0.35) !important;
+            color: rgba(239, 71, 111, 1) !important;
+        }
+
+        /* Secondary buttons (Cancel, Back, etc.) - neutral tone */
+        .btn-secondary {
+            background: linear-gradient(180deg, rgba(120, 130, 150, 0.20), rgba(120, 130, 150, 0.12)) !important;
+            border-color: rgba(120, 130, 150, 0.30) !important;
+            color: rgba(120, 130, 150, 1) !important;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(180deg, rgba(120, 130, 150, 0.25), rgba(120, 130, 150, 0.15)) !important;
+            border-color: rgba(120, 130, 150, 0.40) !important;
+            color: rgba(120, 130, 150, 1) !important;
+        }
+
+        /* Outline button variants - maintain the gradient theme */
+        .btn-outline-primary {
+            background: transparent;
+            border-color: rgba(79, 107, 237, 0.25);
+            color: rgba(79, 107, 237, 0.9);
+        }
+
+        .btn-outline-primary:hover {
+            background: linear-gradient(180deg, rgba(79, 107, 237, 0.15), rgba(79, 107, 237, 0.08));
+            border-color: rgba(79, 107, 237, 0.35);
+            color: rgba(79, 107, 237, 1);
+        }
+
+        .btn-outline-info {
+            background: transparent;
+            border-color: rgba(86, 207, 225, 0.25);
+            color: rgba(86, 207, 225, 0.9);
+        }
+
+        .btn-outline-info:hover {
+            background: linear-gradient(180deg, rgba(86, 207, 225, 0.15), rgba(86, 207, 225, 0.08));
+            border-color: rgba(86, 207, 225, 0.35);
+            color: rgba(86, 207, 225, 1);
+        }
+
+        .btn-outline-warning {
+            background: transparent;
+            border-color: rgba(246, 197, 73, 0.25);
+            color: rgba(246, 197, 73, 0.9);
+        }
+
+        .btn-outline-warning:hover {
+            background: linear-gradient(180deg, rgba(246, 197, 73, 0.15), rgba(246, 197, 73, 0.08));
+            border-color: rgba(246, 197, 73, 0.35);
+            color: rgba(246, 197, 73, 1);
+        }
+
+        .btn-outline-danger {
+            background: transparent;
+            border-color: rgba(239, 71, 111, 0.25);
+            color: rgba(239, 71, 111, 0.9);
+        }
+
+        .btn-outline-danger:hover {
+            background: linear-gradient(180deg, rgba(239, 71, 111, 0.15), rgba(239, 71, 111, 0.08));
+            border-color: rgba(239, 71, 111, 0.35);
+            color: rgba(239, 71, 111, 1);
+        }
+
+        .btn-outline-secondary {
+            background: transparent;
+            border-color: rgba(86, 96, 112, 0.25);
+            color: rgba(86, 96, 112, 0.9);
+        }
+
+        .btn-outline-secondary:hover {
+            background: linear-gradient(180deg, rgba(86, 96, 112, 0.15), rgba(86, 96, 112, 0.08));
+            border-color: rgba(86, 96, 112, 0.35);
+            color: rgba(86, 96, 112, 1);
+        }
+
+        /* Small button adjustments */
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
+        }
+
+        /* Link button styling */
+        .btn-link {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            box-shadow: none;
+        }
+
+        .btn-link:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            transform: none;
+        }
+
+        /* Bootstrap close button styling */
+        .btn-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            opacity: 0.7;
+            transition: all 0.2s ease;
+        }
+
+        .btn-close:hover {
+            opacity: 1;
+            color: var(--text);
+            transform: scale(1.1);
+        }
+
+        .btn-close:focus {
+            box-shadow: 0 0 0 0.2rem rgba(86, 207, 225, 0.25);
+        }
     </style>
     <style>
         body {
