@@ -8,7 +8,7 @@
   <p>Welcome <strong>{{ user.username }}</strong> to Leosac Web GUI!</p>
 </div>
 
-<div class="row center-image">
+<div class="row center-image justify-content-center">
     <div class="col-lg-3"></div>
     <div class="col-lg-2 text-center">
         <a href="{{ url_for('credentials.credentials_list') }}">
@@ -23,7 +23,7 @@
             </a>
         </p>
     </div>
-    <div class="col-lg-2 text-center">
+    <!-- <div class="col-lg-2 text-center">
         <a href="{{ url_for('updates') }}">
             <div class="summary-icon">
                 <i class="fas fa-cubes fa-3x text-white" style="margin-top: 40px;"></i>
@@ -35,7 +35,7 @@
                 Apply Update
             </a>
         </p>
-    </div>
+    </div> -->
     <div class="col-lg-2 text-center">
         <a href="{{ url_for('audit.auditlog') }}">
             <div class="summary-icon">
