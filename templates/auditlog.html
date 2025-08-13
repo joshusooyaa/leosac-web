@@ -841,38 +841,15 @@ function performClientSideSearch(searchTerm) {
   
   // Update statistics based on filtered results
   updateSummaryStatsFromData(filteredEntries, currentTab);
+  
+  // Update pagination info for search results
+  totalEntries = filteredEntries.length;
+  totalPages = 1;
+  currentPage = 1;
+  updatePaginationInfo();
 }
 
-// Update summary statistics from local data
-function updateSummaryStatsFromData(entries) {
-  console.log('Updating summary stats from local data:', entries.length, 'entries');
-  
-  const authEvents = entries.filter(entry => entry.type === 'audit-auth-event');
-  console.log('Auth events found:', authEvents.length);
-  
-  const totalAuth = authEvents.length;
-  const granted = authEvents.filter(entry => entry.access_granted === true).length;
-  const denied = authEvents.filter(entry => entry.access_granted === false).length;
-  
-  // Count unique credentials
-  const uniqueCreds = new Set();
-  authEvents.forEach(entry => {
-    if (entry.credential_id) {
-      uniqueCreds.add(entry.credential_id);
-    }
-  });
-  
-  console.log('Stats calculated:', { totalAuth, granted, denied, uniqueCreds: uniqueCreds.size });
-  
-  // Update the display
-  $('#totalAuthEvents').text(totalAuth);
-  $('#accessGranted').text(granted);
-  $('#accessDenied').text(denied);
-  $('#uniqueCredentials').text(uniqueCreds.size);
-  
-  // Show the summary stats
-  $('#summaryStats').show();
-}
+
 
 // Clear search and show all entries for current tab
 function clearSearch() {
@@ -998,15 +975,23 @@ function displayTabData(tabName) {
     const pageSlice = entriesToShow.slice(startIdx, startIdx + pageSize);
     currentAuditData = pageSlice;
     displayAuditLogs(pageSlice, {count: totalEntries, total_page: totalPages}, tabName);
+    
+    // Update pagination info for filtered results
+    updatePaginationInfo();
   } else {
     // Update current data and display
     currentAuditData = entriesToShow;
     displayAuditLogs(entriesToShow, data.meta, tabName);
   }
   
-  // Update statistics: only show on access tab and compute across all results
+  // Update statistics: only show on access tab and compute across filtered results
   if (tabName === 'access') {
-    updateSummaryStats();
+    // Use filtered data for statistics if filtering is active
+    if (filteringActive) {
+      updateSummaryStatsFromData(entriesToShow, tabName);
+    } else {
+      updateSummaryStats();
+    }
   } else {
     $('#summaryStats').hide();
   }
