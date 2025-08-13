@@ -23,7 +23,7 @@
             --info: #56cfe1;
         }
         
-        /* Global badge/chip styles for readability across the app */
+        /* Global badge/chip styles themed to match metric cards (soft gradients) */
         .badge {
             display: inline-block;
             padding: 0.25rem 0.6rem;
@@ -32,15 +32,52 @@
             font-size: 0.85rem;
             line-height: 1;
             vertical-align: middle;
+            border: 1px solid transparent;
         }
-        .badge-primary { background-color: var(--primary) !important; color: #ffffff !important; }
-        .badge-success { background-color: var(--success) !important; color: #0b131a !important; }
-        .badge-danger  { background-color: var(--danger) !important; color: #0b131a !important; }
-        .badge-warning { background-color: var(--warning) !important; color: #0b131a !important; }
-        .badge-info    { background-color: var(--info) !important; color: #0b131a !important; }
-        .badge-secondary { background-color: #566070 !important; color: #ffffff !important; }
-        .badge-light   { background-color: #e9eef6 !important; color: #0b131a !important; }
-        .badge-dark    { background-color: #2d3441 !important; color: #ffffff !important; }
+        /* Primary (matches unique metric tone) */
+        .badge-primary {
+            background: linear-gradient(180deg, rgba(79, 107, 237, 0.20), rgba(79, 107, 237, 0.10)) !important;
+            border-color: rgba(79, 107, 237, 0.35) !important;
+            color: var(--text) !important;
+        }
+        /* Info (matches total metric tone) */
+        .badge-info {
+            background: linear-gradient(180deg, rgba(86, 207, 225, 0.20), rgba(86, 207, 225, 0.10)) !important;
+            border-color: rgba(86, 207, 225, 0.35) !important;
+            color: var(--text) !important;
+        }
+        /* Success (matches granted metric tone) */
+        .badge-success {
+            background: linear-gradient(180deg, rgba(52, 195, 143, 0.20), rgba(52, 195, 143, 0.10)) !important;
+            border-color: rgba(52, 195, 143, 0.35) !important;
+            color: var(--text) !important;
+        }
+        /* Danger (matches denied metric tone) */
+        .badge-danger {
+            background: linear-gradient(180deg, rgba(239, 71, 111, 0.20), rgba(239, 71, 111, 0.10)) !important;
+            border-color: rgba(239, 71, 111, 0.35) !important;
+            color: var(--text) !important;
+        }
+        .badge-warning {
+            background: linear-gradient(180deg, rgba(246, 197, 73, 0.20), rgba(246, 197, 73, 0.10)) !important;
+            border-color: rgba(246, 197, 73, 0.35) !important;
+            color: var(--text) !important;
+        }
+        .badge-secondary {
+            background: linear-gradient(180deg, rgba(86, 96, 112, 0.20), rgba(86, 96, 112, 0.10)) !important;
+            border-color: rgba(86, 96, 112, 0.35) !important;
+            color: var(--text) !important;
+        }
+        .badge-light {
+            background: linear-gradient(180deg, rgba(233, 238, 246, 0.20), rgba(233, 238, 246, 0.10)) !important;
+            border-color: rgba(233, 238, 246, 0.35) !important;
+            color: var(--text) !important;
+        }
+        .badge-dark {
+            background: linear-gradient(180deg, rgba(45, 52, 65, 0.35), rgba(45, 52, 65, 0.20)) !important;
+            border-color: rgba(45, 52, 65, 0.55) !important;
+            color: var(--text) !important;
+        }
     </style>
     <style>
         body {

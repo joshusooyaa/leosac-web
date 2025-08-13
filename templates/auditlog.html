@@ -16,7 +16,7 @@
             </div>
             <div class="col-md-6">
               <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-                <span id="activeFiltersHeaderBadge" class="badge bg-info text-dark me-2" style="display:none;"></span>
+                <span id="activeFiltersHeaderBadge" class="badge badge-info me-2" style="display:none;"></span>
                 <button type="button" class="btn btn-sm btn-outline-secondary mr-2" id="refreshBtn">
                   <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -1079,11 +1079,11 @@ function generateAccessRow(entry) {
   // Generate access column for auth events
   let accessColumn = '';
   if (entry.access_granted === true) {
-    accessColumn = `<span class="badge badge-success" style="background-color: #28a745 !important; color: white !important;">GRANTED</span>`;
+    accessColumn = `<span class="badge badge-success">GRANTED</span>`;
   } else if (entry.access_granted === false) {
-    accessColumn = `<span class="badge badge-danger" style="background-color: #dc3545 !important; color: white !important;">DENIED</span>`;
+    accessColumn = `<span class="badge badge-danger">DENIED</span>`;
   } else {
-    accessColumn = `<span class="badge badge-secondary" style="background-color: #6c757d !important; color: white !important;">UNKNOWN</span>`;
+    accessColumn = `<span class="badge badge-secondary">UNKNOWN</span>`;
   }
   
   // Generate card credentials column - show bit representation if available
