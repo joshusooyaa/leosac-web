@@ -71,7 +71,10 @@
     }
   }
 
-  btn.addEventListener('click', load);
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    load();
+  });
   load();
 })();
 </script>

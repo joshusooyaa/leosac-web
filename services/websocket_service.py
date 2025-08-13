@@ -41,6 +41,9 @@ class LeosacWebSocketService:
     self._last_connect_error_log_ts = 0.0
     self._health_check_interval_sec = 15
     self._last_health_check_ts = 0.0
+    # Backoff control for connection attempts
+    self._consecutive_connect_failures = 0
+    self._next_connect_attempt_ts = 0.0
     logger.info("WebSocket service initialized")
 
   def start(self):
@@ -101,16 +104,22 @@ class LeosacWebSocketService:
     while self._running:
       try:
         if not self.connected:
-          logger.info("Not connected, attempting to connect...")
-          await self._connect()
+          # Respect backoff between connection attempts
+          now_ts = time.time()
+          if now_ts >= self._next_connect_attempt_ts:
+            logger.info("Not connected, attempting to connect...")
+            await self._connect()
+          else:
+            await asyncio.sleep(0.25)
 
         if self.connected:
           await self._process_messages()
           await self._process_message_queue()
 
-        # Periodic server health checks
+        # Periodic server health checks (faster when disconnected)
         now = time.time()
-        if now - self._last_health_check_ts > self._health_check_interval_sec:
+        health_interval = self._health_check_interval_sec if self.connected else 5
+        if now - self._last_health_check_ts > health_interval:
           await self._run_health_checks()
           self._last_health_check_ts = now
 
@@ -152,6 +161,8 @@ class LeosacWebSocketService:
           self.connected = True
           self._current_server_index = (start_index + idx) % len(self.server_urls)
           self._server_health[url] = { 'up': True, 'latency_ms': 0, 'last_checked': time.time() }
+          self._consecutive_connect_failures = 0
+          self._next_connect_attempt_ts = 0.0
           logger.info(f"✓ WebSocket connected successfully to {url}")
           break
         except Exception as e:
@@ -164,7 +175,16 @@ class LeosacWebSocketService:
           continue
 
       if not self.connected:
-        raise last_err or Exception("No servers available")
+        # Graceful: no exception thrown so main loop continues quietly.
+        now_ts = time.time()
+        self._consecutive_connect_failures += 1
+        # Exponential backoff with cap 10s, start at 1.5s
+        delay = min(10.0, 1.5 * (2 ** max(0, self._consecutive_connect_failures - 1)))
+        self._next_connect_attempt_ts = now_ts + delay
+        if now_ts - self._last_connect_error_log_ts > 30:
+          logger.warning(f"No servers available; will retry in ~{int(delay)}s while running health checks")
+          self._last_connect_error_log_ts = now_ts
+        return
 
       if self.before_open:
         logger.info(f"Processing {len(self.before_open)} queued messages")
@@ -174,8 +194,15 @@ class LeosacWebSocketService:
         logger.info("Queued messages processed")
 
     except Exception as e:
-      logger.error(f"✗ Failed to connect: {e}")
-      logger.error(f"Connection traceback: {traceback.format_exc()}")
+      # Unexpected failure reaching this scope; keep quiet-ish and continue
+      now_ts = time.time()
+      self._consecutive_connect_failures += 1
+      # Apply backoff on unexpected errors too
+      delay = min(10.0, 1.5 * (2 ** max(0, self._consecutive_connect_failures - 1)))
+      self._next_connect_attempt_ts = now_ts + delay
+      if now_ts - self._last_connect_error_log_ts > 30:
+        logger.warning(f"Connect attempt failed: {e}. Backing off ~{int(delay)}s")
+        self._last_connect_error_log_ts = now_ts
       self.connected = False
       self.websocket = None
 
@@ -218,7 +245,11 @@ class LeosacWebSocketService:
     except queue.Empty:
       pass
     except Exception as e:
-      logger.error(f"Error processing message queue: {e}")
+      # Do not spam when disconnected
+      now_ts = time.time()
+      if now_ts - self._last_connect_error_log_ts > 30:
+        logger.warning(f"Message queue error: {e}")
+        self._last_connect_error_log_ts = now_ts
 
   async def _handle_message(self, message):
     """Handle incoming WebSocket message"""
@@ -332,6 +363,19 @@ class LeosacWebSocketService:
       logger.debug(f"Sending {command} via send_json")
       result = self.send_json(command, content)
       logger.debug(f"send_json completed: {result is not None}")
+      # If server signals an error, clear auth on permission issues
+      try:
+        if isinstance(result, dict) and result.get('status_code') not in (None, 0):
+          status_code = result.get('status_code')
+          status_string = result.get('status_string', '') or ''
+          if status_code == 2 or 'Permission denied' in status_string or 'PermissionDenied' in status_string:
+            logger.warning(f"Clearing auth due to permission error on {command}: {status_string}")
+            with self._lock:
+              self.auth_token = None
+              self.user_info = None
+      except Exception:
+        # Never break the call flow on cleanup
+        pass
       return result
     except Exception as e:
       # Graceful: do not spam - log throttled
@@ -357,18 +401,29 @@ class LeosacWebSocketService:
 
       logger.debug(f"Authentication result: {result is not None}")
 
-      if result:
+      # When the server returns an error, our handler returns
+      # {'status_code': X, 'status_string': '...'}
+      if isinstance(result, dict) and 'status_code' in result and result.get('status_code', 1) != 0:
+        msg = result.get('status_string', 'Authentication failed')
+        logger.warning(f"✗ Authentication rejected for {username}: {msg}")
+        return False, {'error': msg}
+
+      # Success path must include token and user_id in the content
+      if isinstance(result, dict) and result.get('token') and result.get('user_id') is not None:
         with self._lock:
           self.auth_token = result.get('token')
           self.user_info = {
             'user_id': result.get('user_id'),
             'username': username
           }
+        # Mark authenticated so app guard won't log user out immediately
+        # get_auth_state checks both token and user_info; this ensures consistency
         logger.info(f"✓ Authentication successful for {username}")
         return True, result
-      else:
-        logger.warning(f"✗ Authentication failed for {username}")
-        return False, {'error': 'Authentication failed'}
+
+      # If we reach here, the response was unexpected or missing fields
+      logger.warning(f"✗ Authentication failed for {username}: Missing token or user_id in response")
+      return False, {'error': 'Missing token or user_id in response'}
 
     except Exception as e:
       logger.error(f"✗ Authentication error for {username}: {e}")
@@ -466,6 +521,14 @@ class LeosacWebSocketService:
     try:
       result = self._run_in_websocket_thread('user.read', {'user_id': 0})
       
+      if isinstance(result, dict) and result.get('status_code', 0) != 0:
+        # Permission denied or unauthenticated → clear auth and signal empty list
+        logger.warning(f"user.read denied: {result.get('status_string')}")
+        with self._lock:
+          self.auth_token = None
+          self.user_info = None
+        return []
+
       if result and 'data' in result:
         logger.debug(f"Raw user data from server: {result['data'][:2]}")  # Log first 2 users for debugging
         users = []
@@ -505,6 +568,13 @@ class LeosacWebSocketService:
     try:
       result = self._run_in_websocket_thread('user.read', {'user_id': int(user_id)})
       
+      if isinstance(result, dict) and result.get('status_code', 0) != 0:
+        logger.warning(f"user.read denied for {user_id}: {result.get('status_string')}")
+        with self._lock:
+          self.auth_token = None
+          self.user_info = None
+        return None
+
       if result and 'data' in result:
         user_data = result['data']
         if isinstance(user_data, list):

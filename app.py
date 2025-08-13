@@ -57,6 +57,55 @@ app.register_blueprint(wiegand_readers_bp)
 app.register_blueprint(audit_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(alarms_bp)
+@app.before_request
+def ensure_ws_auth_or_logout():
+    try:
+        # Allow login, logout, static and status endpoints without WS auth
+        ep = (request.endpoint or '')
+        if (ep.startswith('auth.') or ep == 'static' or 'status' in ep):
+            return
+        if current_user.is_authenticated:
+            state = leosac_client.get_auth_state() or {}
+            # Single source of truth: if auth_token is None, force logout
+            if state.get('auth_token') is None:
+                # Clear session and log out if WS auth no longer valid
+                session.pop('auth_token', None)
+                session.pop('user_info', None)
+                leosac_client.set_auth_state(None, None)
+                try:
+                    logout_user()
+                except Exception:
+                    pass
+                flash('Your session has expired or the server lost authentication. Please log in again.', 'error')
+                return redirect(url_for('auth.login'))
+    except Exception:
+        # Never block requests on auth check errors
+        return
+
+@app.after_request
+def logout_if_ws_lost(response):
+    try:
+        ep = (request.endpoint or '')
+        if (ep.startswith('auth.') or ep == 'static' or 'status' in ep):
+            return response
+        if current_user.is_authenticated:
+            state = leosac_client.get_auth_state() or {}
+            if state.get('auth_token') is None:
+                session.pop('auth_token', None)
+                session.pop('user_info', None)
+                leosac_client.set_auth_state(None, None)
+                try:
+                    logout_user()
+                except Exception:
+                    pass
+                try:
+                    flash('Your session has expired or permissions were revoked. Please log in again.', 'error')
+                except Exception:
+                    pass
+                return redirect(url_for('auth.login'))
+    except Exception:
+        pass
+    return response
 
 # After login_manager is created and initialized, add the user_loader function:
 @login_manager.user_loader

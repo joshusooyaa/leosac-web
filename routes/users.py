@@ -2,14 +2,37 @@
 User management routes for Flask application.
 """
 import logging
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask_login import login_required, current_user, logout_user
 from services.websocket_service import leosac_client
 from utils.rank_converter import USER_RANKS
 
 logger = logging.getLogger(__name__)
 
 users_bp = Blueprint('users', __name__)
+
+def _logout_if_ws_unauthenticated():
+    """If WS auth_token is None, clear session and log the user out immediately."""
+    try:
+        state = leosac_client.get_auth_state() or {}
+        if state.get('auth_token') is None:
+            try:
+                leosac_client.logout()
+            except Exception:
+                pass
+            session.pop('auth_token', None)
+            session.pop('user_info', None)
+            leosac_client.set_auth_state(None, None)
+            try:
+                logout_user()
+            except Exception:
+                pass
+            flash('Your session has expired or permissions were revoked. Please log in again.', 'error')
+            return redirect(url_for('auth.login'))
+    except Exception:
+        # If anything goes wrong, fall through and let the route continue
+        return None
+    return None
 
 @users_bp.route('/users')
 @login_required
@@ -22,6 +45,9 @@ def users_list():
             flash('WebSocket connection not available. Please try again.', 'error')
             return render_template('users/list.html', users=[])
         users = leosac_client.get_users()
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
         return render_template('users/list.html', users=users)
     except Exception as e:
         logger.error(f'Error loading users: {str(e)}')
@@ -61,6 +87,9 @@ def users_create():
             
             # Create user via WebSocket
             success, result = leosac_client.create_user(user_data)
+            redirect_resp = _logout_if_ws_unauthenticated()
+            if redirect_resp:
+                return redirect_resp
             
             if success:
                 flash('User created successfully!', 'success')
@@ -95,6 +124,9 @@ def users_delete(user_id):
         
         # Delete user via WebSocket
         success, result = leosac_client.delete_user(user_id)
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
         
         if success:
             flash('User deleted successfully!', 'success')
@@ -120,6 +152,9 @@ def profile(user_id):
         
         # Get user details from WebSocket
         user = leosac_client.get_user(user_id)
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
         
         if user:
             # Get additional user data
@@ -226,6 +261,9 @@ def profile_edit(user_id):
             
             # Update user via WebSocket
             success, result = leosac_client.update_user_profile(user_id, user_data)
+            redirect_resp = _logout_if_ws_unauthenticated()
+            if redirect_resp:
+                return redirect_resp
             
             if success:
                 flash('Profile updated successfully!', 'success')
@@ -267,6 +305,9 @@ def profile_change_password(user_id):
         
         # Change password via WebSocket
         success, result = leosac_client.change_user_password(user_id, current_password, new_password)
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
         
         if success:
             flash('Password changed successfully!', 'success')
