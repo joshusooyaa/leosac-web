@@ -276,6 +276,54 @@
         .btn-close:focus {
             box-shadow: 0 0 0 0.2rem rgba(86, 207, 225, 0.25);
         }
+
+        /* Date/Time input styling for better visibility */
+        input[type="date"], input[type="datetime-local"], input[type="time"] {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+        
+        /* Calendar dropdown styling */
+        input[type="date"]::-webkit-datetime-edit,
+        input[type="datetime-local"]::-webkit-datetime-edit,
+        input[type="time"]::-webkit-datetime-edit {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+        input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+        input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="datetime-local"]::-webkit-datetime-edit-text,
+        input[type="time"]::-webkit-datetime-edit-text {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-datetime-edit-month-field,
+        input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+        input[type="time"]::-webkit-datetime-edit-month-field {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-datetime-edit-day-field,
+        input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+        input[type="time"]::-webkit-datetime-edit-day-field {
+            color: var(--text) !important;
+        }
+        
+        input[type="date"]::-webkit-datetime-edit-year-field,
+        input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+        input[type="time"]::-webkit-datetime-edit-year-field {
+            color: var(--text) !important;
+        }
     </style>
     <style>
         body {
@@ -708,21 +756,7 @@
                         <span>Dashboard</span>
                     </a>
                 </li>
-                
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseOverview">
-                        <i class="fa fa-fw fa-chart-bar"></i>
-                        <span>Overview</span>
-                    </a>
-                    <div id="collapseOverview" class="collapse">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            <h6 class="collapse-header">Overview:</h6>
-                            <a class="collapse-item" href="{{ url_for('system_overview') }}">System Overview</a>
-                            <a class="collapse-item" href="{{ url_for('access_overview') }}">Access Overview</a>
-                            <a class="collapse-item" href="{{ url_for('zone_overview') }}">Zone Overview</a>
-                        </div>
-                    </div>
-                </li>
+
                 
                 <hr class="sidebar-divider">
                 
