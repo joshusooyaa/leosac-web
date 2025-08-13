@@ -4,63 +4,194 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<div>
-  <p>Welcome <strong>{{ user.username }}</strong> to Leosac Web GUI!</p>
+<div class="row g-3">
+  <div class="col-12 col-lg-3">
+    <div class="card metric-card metric-card--total">
+      <div class="card-body text-center">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="small text-muted">Users</span>
+          <i class="fas fa-user"></i>
+        </div>
+        <h3 id="metricUsers" class="my-2">-</h3>
+        <a href="{{ url_for('users.users_list') }}" class="small text-decoration-none">Manage Users</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="card metric-card metric-card--unique">
+      <div class="card-body text-center">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="small text-muted">Groups</span>
+          <i class="fas fa-users"></i>
+        </div>
+        <h3 id="metricGroups" class="my-2">-</h3>
+        <a href="{{ url_for('groups.groups_list') }}" class="small text-decoration-none">Manage Groups</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="card metric-card metric-card--granted">
+      <div class="card-body text-center">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="small text-muted">Credentials</span>
+          <i class="fas fa-id-badge"></i>
+        </div>
+        <h3 id="metricCredentials" class="my-2">-</h3>
+        <a href="{{ url_for('credentials.credentials_list') }}" class="small text-decoration-none">Manage Credentials</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-3">
+    <div class="card metric-card metric-card--denied">
+      <div class="card-body text-center">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="small text-muted">Doors</span>
+          <i class="fas fa-door-open"></i>
+        </div>
+        <h3 id="metricDoors" class="my-2">-</h3>
+        <a href="{{ url_for('doors.doors_list') }}" class="small text-decoration-none">Manage Doors</a>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="row center-image justify-content-center">
-    <div class="col-lg-3"></div>
-    <div class="col-lg-2 text-center">
-        <a href="{{ url_for('credentials.credentials_list') }}">
-            <div class="summary-icon">
-                <i class="fas fa-id-badge fa-3x text-white" style="margin-top: 40px;"></i>
-            </div>
-        </a>
-        <br /><br />
-        <p>
-            <a href="{{ url_for('credentials.credentials_list') }}" class="btn btn-primary">
-                Manage Access
-            </a>
-        </p>
+<div class="row g-3 mt-2">
+  <div class="col-12 col-xl-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Recent Access Events</h6>
+        <a href="{{ url_for('audit.auditlog') }}" class="small text-decoration-none">View all</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>Time</th>
+                <th>Access</th>
+                <th>User</th>
+                <th>Door</th>
+              </tr>
+            </thead>
+            <tbody id="recentAccessBody">
+              <tr><td colspan="4" class="text-muted text-center small">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <!-- <div class="col-lg-2 text-center">
-        <a href="{{ url_for('updates') }}">
-            <div class="summary-icon">
-                <i class="fas fa-cubes fa-3x text-white" style="margin-top: 40px;"></i>
-            </div>
-        </a>
-        <br /><br />
-        <p>
-            <a href="{{ url_for('updates') }}" class="btn btn-primary">
-                Apply Update
-            </a>
-        </p>
-    </div> -->
-    <div class="col-lg-2 text-center">
-        <a href="{{ url_for('audit.auditlog') }}">
-            <div class="summary-icon">
-                <i class="fas fa-bell fa-3x text-white" style="margin-top: 40px;"></i>
-            </div>
-        </a>
-        <br /><br />
-        <p>
-            <a href="{{ url_for('audit.auditlog') }}" class="btn btn-primary">
-                Events
-            </a>
-        </p>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">System</h6>
+        <span id="wsStatus" class="badge badge-secondary">Unknown</span>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0 small">
+          <li class="d-flex justify-content-between py-1"><span>WebSocket</span><span id="wsStatusText" class="text-muted">-</span></li>
+          <li class="d-flex justify-content-between py-1"><span>Total Auth Events</span><span id="statTotal" class="text-muted">-</span></li>
+          <li class="d-flex justify-content-between py-1"><span>Granted</span><span id="statGranted" class="text-muted">-</span></li>
+          <li class="d-flex justify-content-between py-1"><span>Denied</span><span id="statDenied" class="text-muted">-</span></li>
+          <li class="d-flex justify-content-between py-1"><span>Unique Credentials</span><span id="statUnique" class="text-muted">-</span></li>
+        </ul>
+      </div>
     </div>
-    <div class="col-lg-3"></div>
+  </div>
 </div>
 
-<style>
-.center-image {
-    text-align: center;
-}
-.space-bottom {
-    margin-bottom: 2rem;
-}
-.space-top {
-    margin-top: 2rem;
-}
-</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Summary counts
+  fetch('/api/dashboard/summary')
+    .then(r => r.json())
+    .then(res => {
+      if (!res || !res.success) return;
+      const c = res.counts || {};
+      document.getElementById('metricUsers').textContent = c.users ?? '-';
+      document.getElementById('metricGroups').textContent = c.groups ?? '-';
+      document.getElementById('metricCredentials').textContent = c.credentials ?? '-';
+      document.getElementById('metricDoors').textContent = c.doors ?? '-';
+      const wsBadge = document.getElementById('wsStatus');
+      const wsText = document.getElementById('wsStatusText');
+      const ok = !!res.connected;
+      wsBadge.className = 'badge ' + (ok ? 'badge-success' : 'badge-danger');
+      wsBadge.textContent = ok ? 'Connected' : 'Disconnected';
+      wsText.textContent = ok ? 'Connected' : 'Disconnected';
+    })
+    .catch(() => {});
+
+  // Recent access events (first 10)
+  fetch('/api/audit/logs?page=1&page_size=10&enabled_types=Leosac::Audit::AuthEvent')
+    .then(r => r.json())
+    .then(res => {
+      const body = document.getElementById('recentAccessBody');
+      body.innerHTML = '';
+      if (!res || !res.success || !(res.data || []).length) {
+        body.innerHTML = '<tr><td colspan="4" class="text-muted text-center small">No recent auth events</td></tr>';
+        return;
+      }
+      (res.data || []).forEach(e => {
+        // Derive access if missing: event_type → event_mask → description
+        let ag = e.access_granted;
+        if (ag === undefined || ag === null) {
+          const et = String(e.event_type || '').toUpperCase();
+          if (et === 'AUTH_GRANTED' || et === 'ACCESS_GRANTED') ag = true;
+          else if (et === 'AUTH_DENIED' || et === 'ACCESS_DENIED') ag = false;
+        }
+        if (ag === undefined || ag === null) {
+          const em = e.event_mask ?? e['event-mask'];
+          if (em !== undefined && em !== null) {
+            try {
+              const mask = BigInt(em);
+              if ((mask & (1n << 49n)) !== 0n) ag = true; // AUTH_GRANTED
+              else if ((mask & (1n << 50n)) !== 0n) ag = false; // AUTH_DENIED
+            } catch (_) {}
+          }
+        }
+        const granted = ag === true ? 'GRANTED' : (ag === false ? 'DENIED' : 'UNKNOWN');
+        const badgeClass = ag === true ? 'badge-success' : (ag === false ? 'badge-danger' : 'badge-secondary');
+        const time = e.formatted_timestamp || '';
+        let user = '';
+        try {
+          if (e.credential_raw) {
+            try { const cr = JSON.parse(e.credential_raw); user = (cr.attributes && cr.attributes.alias) || ''; }
+            catch (_) {}
+          }
+          if (!user && e.after) {
+            try { const a = JSON.parse(e.after); user = (a.attributes && a.attributes.alias) || ''; }
+            catch (_) {}
+          }
+          if (!user && e.before) {
+            try { const b = JSON.parse(e.before); user = (b.attributes && b.attributes.alias) || ''; }
+            catch (_) {}
+          }
+        } catch(_) {}
+        const door = (e.door_alias || e.target_door_alias || '').toString().replace(/^my_leosac\./, '');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${time}</td>
+          <td><span class="badge ${badgeClass}">${granted}</span></td>
+          <td>${user || '<span class="text-muted">N/A</span>'}</td>
+          <td>${door || '<span class="text-muted">N/A</span>'}</td>
+        `;
+        body.appendChild(tr);
+      });
+    })
+    .catch(() => {});
+
+  // Stats
+  fetch('/api/audit/statistics')
+    .then(r => r.json())
+    .then(res => {
+      if (!res || !res.success) return;
+      const s = res.data || {};
+      document.getElementById('statTotal').textContent = s.total_auth ?? '-';
+      document.getElementById('statGranted').textContent = s.granted ?? '-';
+      document.getElementById('statDenied').textContent = s.denied ?? '-';
+      document.getElementById('statUnique').textContent = s.unique_credentials ?? '-';
+    })
+    .catch(() => {});
+});
+</script>
 {% endblock %} 

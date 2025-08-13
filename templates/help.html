@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Help - Leosac Web{% endblock %}
+{% block page_title %}Help{% endblock %}
+{% block content %}
+<div class="col-lg-12 col-md-12">
+  <div class="card">
+    <div class="card-header"><h5 class="mb-0">Leosac Web – Admin Guide</h5></div>
+    <div class="card-body">
+      <p>This help page summarizes how to configure Users, Credentials, Groups, Schedules, Doors and Schedule Mappings so door access works as expected. See the README for full details.</p>
+      <ol>
+        <li>Create Users; optionally group them.</li>
+        <li>Create Credentials (RFID) with correct card-id and nb-bits; optionally set Owner.</li>
+        <li>Create Schedules with timeframes.</li>
+        <li>Create Schedule Mappings that connect Schedules to Users/Groups/Credentials and target Doors. If no doors are set, the mapping applies to all doors.</li>
+        <li>Verify by presenting the credential at the door and checking Audit/ Dashboard for GRANTED/DENIED.</li>
+      </ol>
+      <p>Auth decision is made by Leosac using the mapping and current time. The result is logged as an AuthEvent.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

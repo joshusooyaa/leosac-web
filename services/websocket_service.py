@@ -2486,11 +2486,9 @@ class LeosacWebSocketService:
         # Log the relationships data for debugging
         logger.debug(f"Auth event relationships - credential: {credential}, door: {door}")
         
-        # Prefer backend-provided boolean if present; fallback to description parsing
-        access_granted = attributes.get('access_granted')
-        if access_granted is None:
-          access_granted = self._parse_access_granted_from_description(attributes.get('description', ''))
-        logger.debug(f"Derived access_granted: {access_granted} (raw mask-derived or parsed from description)")
+        # Determine access flag robustly
+        access_granted = self._normalize_access_granted(attributes)
+        logger.debug(f"Derived access_granted: {access_granted} (normalized)")
         
         processed_entry.update({
           'credential_id': credential.get('id'),
@@ -2549,6 +2547,56 @@ class LeosacWebSocketService:
     # Default to None if we can't determine
     return None
 
+  def _normalize_access_granted(self, attributes):
+    """Determine access_granted as a strict boolean from various attribute sources.
+    
+    Priority:
+    1) attributes['access_granted'] if present (normalize truthy/falsey and strings)
+    2) attributes['event_type'] if it contains granted/denied semantics
+    3) attributes['event_mask'] bit flags if present
+    4) Fallback to parsing description text
+    """
+    try:
+      if not attributes or not isinstance(attributes, dict):
+        return None
+      
+      ag = attributes.get('access_granted')
+      if isinstance(ag, bool):
+        return ag
+      if isinstance(ag, (int, float)):
+        if int(ag) == 1:
+          return True
+        if int(ag) == 0:
+          return False
+      if isinstance(ag, str):
+        s = ag.strip().lower()
+        if s in ('true', '1', 'yes', 'y', 'granted', 'access_granted', 'auth_granted'):
+          return True
+        if s in ('false', '0', 'no', 'n', 'denied', 'access_denied', 'auth_denied'):
+          return False
+      
+      et = attributes.get('event_type')
+      if isinstance(et, str):
+        u = et.upper()
+        if 'GRANTED' in u:
+          return True
+        if 'DENIED' in u:
+          return False
+      
+      em = attributes.get('event_mask')
+      try:
+        mask = int(em)
+        if (mask & (1 << 49)) != 0:
+          return True
+        if (mask & (1 << 50)) != 0:
+          return False
+      except Exception:
+        pass
+      
+      return self._parse_access_granted_from_description(attributes.get('description', ''))
+    except Exception:
+      return None
+
   def get_audit_event_types(self):
     """Get available audit event types"""
     return [
@@ -2604,13 +2652,12 @@ class LeosacWebSocketService:
         unique_credentials = set()
         
         for entry in auth_entries:
-          # Parse access granted from description
-          description = entry.get('attributes', {}).get('description', '')
-          access_granted = self._parse_access_granted_from_description(description)
+          attributes = entry.get('attributes', {})
+          access_granted = self._normalize_access_granted(attributes)
           
-          if access_granted == True:
+          if access_granted is True:
             granted += 1
-          elif access_granted == False:
+          elif access_granted is False:
             denied += 1
           
           # Extract credential ID from relationships

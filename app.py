@@ -270,6 +270,46 @@ def updates():
 def settings():
     return render_template('settings.html')
 
+# Dashboard summary API for combined dashboard
+@app.route('/api/dashboard/summary')
+@login_required
+def api_dashboard_summary():
+    try:
+        # Connection status
+        auth_state = leosac_client.get_auth_state() or {}
+        connected = bool(auth_state.get('connected'))
+
+        # Basic counts with safe fallbacks
+        try:
+            users = leosac_client.get_users() or []
+        except Exception:
+            users = []
+        try:
+            groups = leosac_client.get_groups() or []
+        except Exception:
+            groups = []
+        try:
+            credentials = leosac_client.get_credentials() or []
+        except Exception:
+            credentials = []
+        try:
+            doors = leosac_client.get_doors() or []
+        except Exception:
+            doors = []
+
+        return jsonify({
+            'success': True,
+            'connected': connected,
+            'counts': {
+                'users': len(users),
+                'groups': len(groups),
+                'credentials': len(credentials),
+                'doors': len(doors)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def unique_timeframe_count(timeframes):
     pairs = set()
     for tf in timeframes or []:
