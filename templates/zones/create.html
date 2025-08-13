@@ -5,45 +5,60 @@
   <div class="row">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Create New Zone</h3>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="card-title">Create Zone</h3>
+          <a class="btn btn-secondary" href="{{ url_for('zones.zones_list') }}">Back</a>
         </div>
         <div class="card-body">
           <form method="POST">
             <div class="form-group">
-              <label for="name">Zone Name</label>
-              <input type="text" class="form-control" id="name" name="name" required>
+              <label for="alias">Zone Name</label>
+              <input type="text" class="form-control" id="alias" name="alias" required>
             </div>
             <div class="form-group">
               <label for="description">Description</label>
               <textarea class="form-control" id="description" name="description" rows="3"></textarea>
             </div>
             <div class="form-group">
-              <label for="parent_zone">Parent Zone (Optional)</label>
-              <select class="form-control" id="parent_zone" name="parent_zone">
-                <option value="">No Parent Zone</option>
-                <!-- Zones will be populated dynamically -->
+              <label for="type">Type</label>
+              <select class="form-control" id="type" name="type">
+                <option value="0">Physical</option>
+                <option value="1" selected>Logical</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="access_level">Access Level</label>
-              <select class="form-control" id="access_level" name="access_level" required>
-                <option value="public">Public</option>
-                <option value="restricted">Restricted</option>
-                <option value="secure">Secure</option>
-                <option value="high_security">High Security</option>
-              </select>
+            <div class="row">
+              <div class="col-md-6">
+                <label>Doors</label>
+                <div class="border rounded p-2" style="max-height: 250px; overflow:auto;">
+                  {% for door in (doors or []) %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="doors[]" value="{{ door.id }}" id="door-{{ door.id }}">
+                      <label class="form-check-label" for="door-{{ door.id }}">{{ (door.attributes.alias) or ('Door ' ~ door.id) }}</label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label>Child Zones</label>
+                <div class="border rounded p-2" style="max-height: 250px; overflow:auto;">
+                  {% for z in (zones or []) %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="children[]" value="{{ z.id }}" id="child-{{ z.id }}">
+                      <label class="form-check-label" for="child-{{ z.id }}">{{ z.attributes.alias or ('Zone ' ~ z.id) }}</label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="color">Zone Color</label>
-              <input type="color" class="form-control" id="color" name="color" value="#007bff">
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary">Create Zone</button>
+              <a href="{{ url_for('zones.zones_list') }}" class="btn btn-secondary">Cancel</a>
             </div>
-            <button type="submit" class="btn btn-primary">Create Zone</button>
-            <a href="{{ url_for('zones_list') }}" class="btn btn-secondary">Cancel</a>
           </form>
         </div>
       </div>
     </div>
   </div>
+  
 </div>
-{% endblock %} 
+{% endblock %}

@@ -10,7 +10,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Zone List</h5>
-                    <a href="{{ url_for('zones_create') }}" class="btn btn-primary">
+                    <a href="{{ url_for('zones.zones_create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Zone
                     </a>
                 </div>
@@ -20,15 +20,41 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Name</th>
+                                    <th>Zone</th>
                                     <th>Description</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td colspan="4" class="text-center">Zone list will be implemented here</td>
-                                </tr>
+                                {% if zones %}
+                                  {% for zone in zones %}
+                                    {% set attrs = zone.attributes or {} %}
+                                    <tr>
+                                      <td>{{ zone.id }}</td>
+                                      <td>{{ attrs.alias }}</td>
+                                      <td>{{ attrs.description }}</td>
+                                      <td>
+                                        <div class="btn-actions">
+                                          <a class="btn btn-sm btn-outline-primary btn-icon" title="View" href="{{ url_for('zones.zone_detail', zone_id=zone.id) }}">
+                                            <i class="fas fa-eye"></i>
+                                          </a>
+                                          <a class="btn btn-sm btn-outline-warning btn-icon" title="Edit" href="{{ url_for('zones.zone_edit', zone_id=zone.id) }}">
+                                            <i class="fas fa-edit"></i>
+                                          </a>
+                                          <form method="POST" action="{{ url_for('zones.zone_delete', zone_id=zone.id) }}" style="display:inline" onsubmit="return confirm('Delete this zone?');">
+                                            <button class="btn btn-sm btn-outline-danger btn-icon" title="Delete" type="submit">
+                                              <i class="fas fa-trash"></i>
+                                            </button>
+                                          </form>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  {% endfor %}
+                                {% else %}
+                                  <tr>
+                                    <td colspan="4" class="text-center text-muted">No zones</td>
+                                  </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>

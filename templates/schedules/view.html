@@ -148,6 +148,18 @@
                           <p class="text-muted">No doors mapped</p>
                         {% endif %}
                       </div>
+                      <div class="col-md-6">
+                        <h6>Zones</h6>
+                        {% if mapping.zones %}
+                          <div class="border rounded p-2">
+                            {% for zone_id in mapping.zones %}
+                              <div><i class="fas fa-th-large"></i> {{ zone_labels.get(zone_id, 'Zone ' ~ zone_id) }}</div>
+                            {% endfor %}
+                          </div>
+                        {% else %}
+                          <p class="text-muted">No zones mapped</p>
+                        {% endif %}
+                      </div>
                     </div>
                   </div>
                 </div>

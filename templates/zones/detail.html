@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="card-title">Zone: {{ zone.attributes.alias or ('Zone ' ~ zone.id) }}</h3>
+          <div>
+            <a class="btn btn-warning" href="{{ url_for('zones.zone_edit', zone_id=zone.id) }}"><i class="fas fa-edit"></i> Edit</a>
+            <a class="btn btn-secondary" href="{{ url_for('zones.zones_list') }}"><i class="fas fa-arrow-left"></i> Back</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Details</h5>
+              <table class="table table-borderless">
+                <tr><td><strong>ID</strong></td><td>{{ zone.id }}</td></tr>
+                <tr><td><strong>Alias</strong></td><td>{{ zone.attributes.alias }}</td></tr>
+                <tr><td><strong>Description</strong></td><td>{{ zone.attributes.description }}</td></tr>
+                <tr><td><strong>Type</strong></td><td>{% if (zone.attributes.type or 1) == 0 %}Physical{% else %}Logical{% endif %}</td></tr>
+              </table>
+            </div>
+          </div>
+          <hr>
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Doors</h5>
+              {% set rel_doors = (zone.relationships.doors.data if zone.relationships and zone.relationships.doors else []) %}
+              {% if rel_doors %}
+                <ul>
+                  {% for d in rel_doors %}
+                    <li>Door #{{ d.id }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted">No doors</p>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <h5>Child Zones</h5>
+              {% set rel_children = (zone.relationships.children.data if zone.relationships and zone.relationships.children else []) %}
+              {% if rel_children %}
+                <ul>
+                  {% for c in rel_children %}
+                    <li>Zone #{{ c.id }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted">No child zones</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+

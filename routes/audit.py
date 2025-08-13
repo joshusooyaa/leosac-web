@@ -49,7 +49,18 @@ def get_audit_logs():
         
         logger.info(f"Fetching audit logs: page={page}, page_size={page_size}, types={enabled_types}, search='{search_term}', start_ts={start_ts}, end_ts={end_ts}")
         
-        # Get audit logs from WebSocket service
+        # Raw passthrough variant when requested
+        if request.args.get('raw') == '1':
+            raw = leosac_client.get_audit_logs_raw(
+                enabled_types=enabled_types,
+                page=page,
+                page_size=page_size,
+                start_ts=start_ts,
+                end_ts=end_ts
+            )
+            return jsonify({'success': True, 'raw': raw})
+
+        # Normal processed logs
         result = leosac_client.get_audit_logs(
             enabled_types=enabled_types,
             page=page,

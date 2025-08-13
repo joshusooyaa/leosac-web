@@ -21,6 +21,7 @@ from routes.users import users_bp
 from routes.credentials import credentials_bp
 from routes.schedules import schedules_bp
 from routes.groups import groups_bp
+from routes.zones import zones_bp
 from routes.doors import doors_bp
 from routes.access_points import access_points_bp
 from routes.wiegand_readers import wiegand_readers_bp
@@ -47,6 +48,7 @@ app.register_blueprint(users_bp)
 app.register_blueprint(credentials_bp)
 app.register_blueprint(schedules_bp)
 app.register_blueprint(groups_bp)
+app.register_blueprint(zones_bp)
 app.register_blueprint(doors_bp)
 app.register_blueprint(access_points_bp)
 app.register_blueprint(wiegand_readers_bp)
@@ -233,15 +235,7 @@ def groups_list():
 def groups_create():
     return render_template('groups/create.html')
 
-@app.route('/zones')
-@login_required
-def zones_list():
-    return render_template('zones/list.html')
-
-@app.route('/zones/create')
-@login_required
-def zones_create():
-    return render_template('zones/create.html')
+## zones routes are provided by zones_bp
 
 @app.route('/doors')
 @login_required

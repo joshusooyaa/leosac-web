@@ -1199,6 +1199,125 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error deleting schedule {schedule_id}: {e}")
       return False, {'error': str(e)}
 
+  def get_zones(self):
+    """Get all zones (thread-safe)"""
+    logger.info("=== GETTING ZONES ===")
+    try:
+      result = self._run_in_websocket_thread('zone.read', {'zone_id': 0})
+      if result and 'data' in result:
+        zones = []
+        for zone_data in result['data']:
+          zone = {
+            'id': zone_data.get('id'),
+            'attributes': zone_data.get('attributes', {}),
+            'relationships': zone_data.get('relationships', {})
+          }
+          attrs = zone.get('attributes') or {}
+          zone['name'] = attrs.get('alias') or f"Zone {zone['id']}"
+          zones.append(zone)
+        logger.info(f"✓ Retrieved {len(zones)} zones")
+        return zones
+      logger.warning("✗ No zones data in response")
+      return []
+    except Exception as e:
+      logger.error(f"✗ Error getting zones: {e}")
+      return []
+
+  def get_zone(self, zone_id):
+    """Get a specific zone by ID (thread-safe)"""
+    logger.info(f"=== GETTING ZONE: {zone_id} ===")
+    try:
+      result = self._run_in_websocket_thread('zone.read', {'zone_id': int(zone_id)})
+      if result and 'data' in result:
+        z = result['data']
+        if isinstance(z, list):
+          if not z:
+            return None
+          z = z[0]
+        zone = {
+          'id': z.get('id'),
+          'attributes': z.get('attributes', {}),
+          'relationships': z.get('relationships', {})
+        }
+        attrs = zone.get('attributes') or {}
+        zone['name'] = attrs.get('alias') or f"Zone {zone['id']}"
+        logger.info(f"✓ Retrieved zone {zone_id}")
+        return zone
+      logger.warning(f"✗ Zone {zone_id} not found")
+      return None
+    except Exception as e:
+      logger.error(f"✗ Error getting zone {zone_id}: {e}")
+      return None
+
+  def create_zone(self, zone_data):
+    """Create a new zone (thread-safe)
+
+    zone_data expects keys: alias, description, type (int 0/1), doors (list[int]), children (list[int])
+    """
+    logger.info("=== CREATING ZONE ===")
+    logger.info(f"Zone data: {zone_data}")
+    try:
+      attributes = {
+        'alias': zone_data.get('alias'),
+        'description': zone_data.get('description', ''),
+        'type': int(zone_data.get('type', 1)),
+        'doors': [int(d) for d in (zone_data.get('doors') or [])],
+        'children': [int(z) for z in (zone_data.get('children') or [])]
+      }
+      result = self._run_in_websocket_thread('zone.create', {
+        'attributes': attributes
+      })
+      if result and 'data' in result:
+        logger.info("✓ Zone created successfully")
+        return True, result['data']
+      else:
+        logger.error("✗ Zone creation failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error creating zone: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def update_zone(self, zone_id, zone_data):
+    """Update a zone (thread-safe)"""
+    logger.info(f"=== UPDATING ZONE: {zone_id} ===")
+    logger.info(f"Zone data: {zone_data}")
+    try:
+      attributes = {
+        'alias': zone_data.get('alias'),
+        'description': zone_data.get('description', ''),
+        'type': int(zone_data.get('type', 1)),
+        'doors': [int(d) for d in (zone_data.get('doors') or [])],
+        'children': [int(z) for z in (zone_data.get('children') or [])]
+      }
+      params = {
+        'zone_id': int(zone_id),
+        'attributes': attributes
+      }
+      result = self._run_in_websocket_thread('zone.update', params)
+      if result and 'data' in result:
+        logger.info(f"✓ Zone {zone_id} updated successfully")
+        return True, result['data']
+      else:
+        logger.error(f"✗ Zone update failed: no data in response")
+        return False, {'error': 'No data in response'}
+    except Exception as e:
+      logger.error(f"✗ Error updating zone {zone_id}: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return False, {'error': str(e)}
+
+  def delete_zone(self, zone_id):
+    """Delete a zone (thread-safe)"""
+    logger.info(f"=== DELETING ZONE: {zone_id} ===")
+    try:
+      result = self._run_in_websocket_thread('zone.delete', {'zone_id': int(zone_id)})
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Zone deletion {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error deleting zone {zone_id}: {e}")
+      return False, {'error': str(e)}
+
   def get_groups(self):
     """Get all groups (thread-safe)"""
     logger.info("=== GETTING GROUPS ===")
@@ -2367,9 +2486,11 @@ class LeosacWebSocketService:
         # Log the relationships data for debugging
         logger.debug(f"Auth event relationships - credential: {credential}, door: {door}")
         
-        # Parse access granted from description
-        access_granted = self._parse_access_granted_from_description(attributes.get('description', ''))
-        logger.debug(f"Parsed access_granted: {access_granted} from description: {attributes.get('description', '')}")
+        # Prefer backend-provided boolean if present; fallback to description parsing
+        access_granted = attributes.get('access_granted')
+        if access_granted is None:
+          access_granted = self._parse_access_granted_from_description(attributes.get('description', ''))
+        logger.debug(f"Derived access_granted: {access_granted} (raw mask-derived or parsed from description)")
         
         processed_entry.update({
           'credential_id': credential.get('id'),
@@ -2517,5 +2638,24 @@ class LeosacWebSocketService:
       logger.error(f"✗ Error getting audit statistics: {e}")
       logger.error(f"Traceback: {traceback.format_exc()}")
       return {'total_auth': 0, 'granted': 0, 'denied': 0, 'unique_credentials': 0}
+
+  def get_audit_logs_raw(self, enabled_types=None, page=1, page_size=20, start_ts=None, end_ts=None):
+    """Return raw audit.get response straight from server (thread-safe)"""
+    try:
+      request_params = {
+        'p': page,
+        'ps': page_size
+      }
+      if enabled_types:
+        request_params['enabled_type'] = enabled_types
+      if start_ts is not None:
+        request_params['start_ts'] = int(start_ts)
+      if end_ts is not None:
+        request_params['end_ts'] = int(end_ts)
+      return self._run_in_websocket_thread('audit.get', request_params)
+    except Exception as e:
+      logger.error(f"✗ Error getting raw audit logs: {e}")
+      logger.error(f"Traceback: {traceback.format_exc()}")
+      return {'error': str(e)}
 
 leosac_client = LeosacWebSocketService()
