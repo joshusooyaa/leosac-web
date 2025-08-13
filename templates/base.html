@@ -79,6 +79,36 @@
             color: var(--text) !important;
         }
 
+        /* Topbar dropdown theming (alerts and profile) */
+        .topbar .dropdown-menu,
+        .topbar .dropdown-list {
+            background-color: var(--surface) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border) !important;
+        }
+        .topbar .dropdown-header {
+            background-color: var(--surface-2) !important;
+            color: var(--text) !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .topbar .dropdown-menu .dropdown-item {
+            color: var(--text) !important;
+            background-color: transparent !important;
+        }
+        .topbar .dropdown-menu .dropdown-item:hover,
+        .topbar .dropdown-menu .dropdown-item:focus {
+            background-color: var(--surface-2) !important;
+            color: var(--text) !important;
+        }
+        .topbar .dropdown-menu .small,
+        .topbar .dropdown-menu .text-gray-500 {
+            color: var(--text-muted) !important;
+        }
+        .topbar .dropdown-menu .icon-circle {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+
         /* Global button styling system - consistent with metric card gradients */
         .btn {
             border-radius: 8px;
@@ -484,6 +514,8 @@
         
         .topbar .dropdown-list {
             width: 20rem !important;
+            background-color: var(--surface);
+            color: var(--text);
         }
         
         /* Main content */
@@ -825,7 +857,7 @@
                 <hr class="sidebar-divider">
                 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('audit.auditlog') }}">
+                    <a class="nav-link" href="{{ url_for('alarms.alarms_page') }}">
                         <i class="fas fa-fw fa-bell"></i>
                         <span>Alarms</span>
                     </a>
@@ -854,12 +886,19 @@
                     <!-- Alerts Dropdown -->
                     <li class="nav-item dropdown no-arrow mx-1">
                         <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-bell fa-fw"></i>
-                            <span class="badge badge-danger badge-counter">0</span>
+                            <i class="fas fa-exclamation-triangle fa-fw"></i>
+                            <span class="badge badge-danger badge-counter" id="alertsBadge">0</span>
                         </a>
-                        <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                        <div class="dropdown-list dropdown-menu dropdown-menu-end shadow animated--grow-in" style="min-width: 320px;">
                             <h6 class="dropdown-header">Alarms</h6>
+                            <div id="alertsList">
+                                <div class="dropdown-item text-muted small">No active alarms</div>
+                            </div>
                             <div class="dropdown-divider"></div>
+                            <div class="px-3 py-2">
+                                <div class="small text-muted">Server Health</div>
+                                <div id="serverHealth" class="small"></div>
+                            </div>
                         </div>
                     </li>
                     
@@ -869,7 +908,7 @@
                             <i class="fas fa-user fa-fw"></i>
                             <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ current_user.username }}</span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in">
+                        <div class="dropdown-menu dropdown-menu-end shadow animated--grow-in">
                             <a class="dropdown-item" href="{{ url_for('users.profile', user_id=current_user.id) }}">
                                 <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
                                 Profile
@@ -914,6 +953,71 @@
             </div>
         </div>
     </div>
+    <script>
+      (function() {
+        const badge = document.getElementById('alertsBadge');
+        const alertsList = document.getElementById('alertsList');
+        const health = document.getElementById('serverHealth');
+
+        async function refreshStatus() {
+          try {
+            const resp = await fetch("{{ url_for('status') }}");
+            const data = await resp.json();
+            const healthMap = (data && data.server_health) || {};
+            const servers = (data && data.server_urls) || [];
+            let down = [];
+            let html = '';
+            servers.forEach(url => {
+              const st = healthMap[url] || {};
+              const up = st.up === true;
+              const latency = st.latency_ms != null ? st.latency_ms + ' ms' : '-';
+              let hostOnly = url;
+              try {
+                const tmp = new URL(url.replace(/^ws(s)?:\/\//, 'http$1://'));
+                hostOnly = tmp.hostname;
+              } catch (e) {}
+              const badge = up ? '<span class="badge badge-success">UP</span>' : '<span class="badge badge-danger">DOWN</span>';
+              const lat = up ? ` <span class="text-muted">(${latency})</span>` : '';
+              html += `<div class="d-flex justify-content-between align-items-center"><span class="d-inline-flex align-items-center"><i class="fas fa-server me-1"></i> ${hostOnly}</span><span class="d-inline-flex align-items-center">${badge}${lat}</span></div>`;
+              if (!up) down.push(url);
+            });
+            health.innerHTML = html || '<div class="text-muted">No servers configured</div>';
+
+            // Basic alarm logic: any down server triggers an alarm item
+            alertsList.innerHTML = '';
+            if (down.length > 0) {
+              down.forEach(url => {
+                let hostOnly = url;
+                try {
+                  const tmp = new URL(url.replace(/^ws(s)?:\/\//, 'http$1://'));
+                  hostOnly = tmp.hostname;
+                } catch (e) {}
+                const item = document.createElement('div');
+                item.className = 'dropdown-item d-flex align-items-center';
+                item.innerHTML = `<div class="me-3"><div class="icon-circle bg-danger"><i class="fas fa-exclamation-triangle text-white"></i></div></div><div><div class="small text-gray-500">Server Down</div><span class="font-weight-bold">${hostOnly}</span></div>`;
+                alertsList.appendChild(item);
+              });
+            } else {
+              const none = document.createElement('div');
+              none.className = 'dropdown-item text-muted small';
+              none.textContent = 'No active alarms';
+              alertsList.appendChild(none);
+            }
+
+            badge.textContent = String(down.length);
+            badge.style.display = down.length > 0 ? 'inline-block' : 'none';
+          } catch (e) {
+            // If status endpoint fails, show a generic alarm
+            alertsList.innerHTML = '<div class="dropdown-item text-danger small">Status unavailable</div>';
+            badge.textContent = '1';
+            badge.style.display = 'inline-block';
+          }
+        }
+
+        setInterval(refreshStatus, 10000);
+        refreshStatus();
+      })();
+    </script>
     {% else %}
     <!-- Login page layout -->
     <div class="container">

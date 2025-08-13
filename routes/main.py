@@ -3,14 +3,14 @@ Main routes for Flask application.
 """
 from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
-from config.settings import LEOSAC_ADDR
+from config.settings import LEOSAC_ADDR, LEOSAC_ADDRS
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 @login_required
 def index():
-    return render_template('index.html', user=current_user, config={'LEOSAC_ADDR': LEOSAC_ADDR})
+    return render_template('index.html', user=current_user, config={'LEOSAC_ADDR': LEOSAC_ADDR, 'LEOSAC_ADDRS': LEOSAC_ADDRS})
 
 @main_bp.route('/status')
 def status():
@@ -111,6 +111,11 @@ def updates():
 @login_required
 def auditlog():
     return render_template('auditlog.html')
+
+@main_bp.route('/alarms')
+@login_required
+def alarms_page():
+    return render_template('alarms/list.html')
 
 @main_bp.route('/settings')
 @login_required

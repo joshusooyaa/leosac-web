@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block page_title %}Alarms{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+      <h6 class="m-0 font-weight-bold text-primary">Server Alarms</h6>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshBtn">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered" width="100%" cellspacing="0">
+          <thead>
+            <tr>
+              <th>Server</th>
+              <th>Status</th>
+              <th>Latency</th>
+              <th>Last Checked</th>
+            </tr>
+          </thead>
+          <tbody id="alarmsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const table = document.getElementById('alarmsTable');
+  const btn = document.getElementById('refreshBtn');
+
+  function fmtTs(ts) {
+    if (!ts) return '-';
+    try { return new Date(ts * 1000).toLocaleString(); } catch { return '-'; }
+  }
+
+  async function load() {
+    try {
+      const resp = await fetch("{{ url_for('status') }}");
+      const data = await resp.json();
+      const health = (data && data.server_health) || {};
+      const servers = (data && data.server_urls) || [];
+      table.innerHTML = '';
+      servers.forEach(url => {
+        const st = health[url] || {};
+        const up = st.up === true;
+        let hostOnly = url;
+        try {
+          const tmp = new URL(url.replace(/^ws(s)?:\/\//, 'http$1://'));
+          hostOnly = tmp.hostname;
+        } catch (e) {}
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="align-middle"><i class="fas fa-server me-1"></i> ${hostOnly}</td>
+          <td class="align-middle">${up ? '<span class="badge badge-success">UP</span>' : '<span class="badge badge-danger">DOWN</span>'}</td>
+          <td class="align-middle">${st.latency_ms != null ? st.latency_ms + ' ms' : '-'}</td>
+          <td class="align-middle">${fmtTs(st.last_checked)}</td>
+        `;
+        table.appendChild(tr);
+      });
+      if (servers.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4" class="text-muted">No servers configured</td>';
+        table.appendChild(tr);
+      }
+    } catch (e) {
+      table.innerHTML = '<tr><td colspan="4" class="text-danger">Status unavailable</td></tr>';
+    }
+  }
+
+  btn.addEventListener('click', load);
+  load();
+})();
+</script>
+{% endblock %}
+
+

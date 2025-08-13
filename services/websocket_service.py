@@ -12,7 +12,7 @@ import logging
 import queue
 import traceback
 from datetime import datetime, timezone
-from config.settings import WEBSOCKET_URL
+from config.settings import WEBSOCKET_URL, WEBSOCKET_URLS
 from utils.rank_converter import convert_rank_int_to_string, convert_rank_string_to_int
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,13 @@ class LeosacWebSocketService:
     self._running = False
     self._main_loop = None
     self._service_ready = threading.Event()
+    # Multi-server support
+    self.server_urls = list(WEBSOCKET_URLS) if isinstance(WEBSOCKET_URLS, list) and len(WEBSOCKET_URLS) > 0 else [WEBSOCKET_URL]
+    self._current_server_index = 0
+    self._server_health = {url: { 'up': None, 'latency_ms': None, 'last_checked': None } for url in self.server_urls}
+    self._last_connect_error_log_ts = 0.0
+    self._health_check_interval_sec = 15
+    self._last_health_check_ts = 0.0
     logger.info("WebSocket service initialized")
 
   def start(self):
@@ -101,6 +108,12 @@ class LeosacWebSocketService:
           await self._process_messages()
           await self._process_message_queue()
 
+        # Periodic server health checks
+        now = time.time()
+        if now - self._last_health_check_ts > self._health_check_interval_sec:
+          await self._run_health_checks()
+          self._last_health_check_ts = now
+
         await asyncio.sleep(0.1)
 
       except Exception as e:
@@ -119,18 +132,39 @@ class LeosacWebSocketService:
 
   async def _connect(self):
     """Connect to WebSocket server with debugging"""
-    logger.info(f"=== ATTEMPTING CONNECTION TO {WEBSOCKET_URL} ===")
+    target_urls = list(self.server_urls)
+    # Start from current index to preserve rotation
+    start_index = self._current_server_index
+    ordered = target_urls[start_index:] + target_urls[:start_index]
+    logger.info(f"=== ATTEMPTING CONNECTION. Candidate servers: {ordered} ===")
 
     try:
-      logger.info("Creating WebSocket connection...")
-      self.websocket = await websockets.connect(
-        WEBSOCKET_URL,
-        ping_interval=30,
-        ping_timeout=10,
-        close_timeout=10
-      )
-      self.connected = True
-      logger.info("✓ WebSocket connected successfully")
+      last_err = None
+      for idx, url in enumerate(ordered):
+        try:
+          logger.info(f"Creating WebSocket connection to {url}...")
+          self.websocket = await websockets.connect(
+            url,
+            ping_interval=30,
+            ping_timeout=10,
+            close_timeout=10
+          )
+          self.connected = True
+          self._current_server_index = (start_index + idx) % len(self.server_urls)
+          self._server_health[url] = { 'up': True, 'latency_ms': 0, 'last_checked': time.time() }
+          logger.info(f"✓ WebSocket connected successfully to {url}")
+          break
+        except Exception as e:
+          last_err = e
+          self._server_health[url] = { 'up': False, 'latency_ms': None, 'last_checked': time.time() }
+          now_ts = time.time()
+          if now_ts - self._last_connect_error_log_ts > 5:
+            logger.warning(f"✗ Failed to connect to {url}: {e}")
+            self._last_connect_error_log_ts = now_ts
+          continue
+
+      if not self.connected:
+        raise last_err or Exception("No servers available")
 
       if self.before_open:
         logger.info(f"Processing {len(self.before_open)} queued messages")
@@ -170,6 +204,12 @@ class LeosacWebSocketService:
           await self.websocket.send(json.dumps(message_data['message']))
           processed += 1
         else:
+          # Avoid spamming: keep queue small by dropping older beyond a limit
+          if self._message_queue.qsize() > 1000:
+            try:
+              _ = self._message_queue.get_nowait()
+            except Exception:
+              pass
           self.before_open.append(message_data['message'])
 
       if processed > 0:
@@ -217,6 +257,12 @@ class LeosacWebSocketService:
           with self._lock:
             self.auth_token = None
             self.user_info = None
+        # Opportunistic pongs update latency
+        if data.get('type') == 'pong' and isinstance(data.get('content'), dict):
+          server = data['content'].get('server')
+          latency = data['content'].get('latency_ms')
+          if server in self._server_health:
+            self._server_health[server] = { 'up': True, 'latency_ms': latency, 'last_checked': time.time() }
     except json.JSONDecodeError as e:
       logger.error(f"Failed to parse message: {e}")
 
@@ -288,8 +334,13 @@ class LeosacWebSocketService:
       logger.debug(f"send_json completed: {result is not None}")
       return result
     except Exception as e:
-      logger.error(f"Error in _run_in_websocket_thread: {e}")
-      logger.error(f"Traceback: {traceback.format_exc()}")
+      # Graceful: do not spam - log throttled
+      now_ts = time.time()
+      if now_ts - self._last_connect_error_log_ts > 5:
+        logger.error(f"Error in _run_in_websocket_thread: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        self._last_connect_error_log_ts = now_ts
+      # Re-raise to let callers degrade gracefully
       raise
 
   def authenticate(self, username, password):
@@ -363,6 +414,30 @@ class LeosacWebSocketService:
       logger.error(f"✗ Logout error: {e}")
       return False
 
+  async def _run_health_checks(self):
+    """Ping all servers to update health status."""
+    async def check(url):
+      started = time.time()
+      ok = False
+      try:
+        # Try to open, send a ping frame, and close.
+        async with websockets.connect(url, ping_interval=None, close_timeout=3) as ws:
+          try:
+            await ws.ping()
+            ok = True
+          except Exception:
+            ok = True  # Connection established; consider server up even if ping unsupported
+      except Exception:
+        ok = False
+      latency = int((time.time() - started) * 1000)
+      self._server_health[url] = { 'up': ok, 'latency_ms': latency if ok else None, 'last_checked': time.time() }
+
+    tasks = [check(url) for url in self.server_urls]
+    try:
+      await asyncio.gather(*tasks)
+    except Exception:
+      pass
+
   def get_auth_state(self):
     """Get current authentication state (thread-safe)"""
     with self._lock:
@@ -370,7 +445,10 @@ class LeosacWebSocketService:
         'connected': self.connected,
         'authenticated': bool(self.auth_token and self.user_info),
         'auth_token': self.auth_token,
-        'user_info': self.user_info
+        'user_info': self.user_info,
+        'server_urls': list(self.server_urls),
+        'current_server': self.server_urls[self._current_server_index] if self.server_urls else None,
+        'server_health': self._server_health
       }
       logger.debug(f"Auth state: {state}")
       return state
