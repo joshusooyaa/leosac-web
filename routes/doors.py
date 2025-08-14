@@ -5,6 +5,7 @@ import logging
 import traceback
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
+from utils.permissions import has_permission
 from services.websocket_service import leosac_client
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,9 @@ def doors_list():
 @login_required
 def doors_create():
     """Create a new door"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'doors.create'):
+        flash('You do not have permission to create doors.', 'error')
+        return redirect(url_for('doors.doors_list'))
     if request.method == 'POST':
         try:
             # Check if WebSocket client is connected
@@ -118,6 +122,9 @@ def door_detail(door_id):
 @login_required
 def door_edit(door_id):
     """Edit a door"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'doors.update'):
+        flash('You do not have permission to edit doors.', 'error')
+        return redirect(url_for('doors.doors_list'))
     if request.method == 'POST':
         try:
             # Check if WebSocket client is connected
@@ -186,6 +193,9 @@ def door_edit(door_id):
 @login_required
 def door_delete(door_id):
     """Delete a door"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'doors.delete'):
+        flash('You do not have permission to delete doors.', 'error')
+        return redirect(url_for('doors.doors_list'))
     try:
         # Check if WebSocket client is connected
         auth_state = leosac_client.get_auth_state()

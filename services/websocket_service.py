@@ -363,12 +363,14 @@ class LeosacWebSocketService:
       logger.debug(f"Sending {command} via send_json")
       result = self.send_json(command, content)
       logger.debug(f"send_json completed: {result is not None}")
-      # If server signals an error, clear auth on permission issues
+      # If server signals an error, clear auth on permission issues for mutating commands
       try:
         if isinstance(result, dict) and result.get('status_code') not in (None, 0):
           status_code = result.get('status_code')
           status_string = result.get('status_string', '') or ''
-          if status_code == 2 or 'Permission denied' in status_string or 'PermissionDenied' in status_string:
+          is_permission_error = (status_code == 2 or 'Permission denied' in status_string or 'PermissionDenied' in status_string)
+          is_mutating = any(command.endswith(suf) for suf in ['.create', '.update', '.delete']) or command in ['create_auth_token', 'logout']
+          if is_permission_error and is_mutating:
             logger.warning(f"Clearing auth due to permission error on {command}: {status_string}")
             with self._lock:
               self.auth_token = None
@@ -380,10 +382,11 @@ class LeosacWebSocketService:
     except Exception as e:
       # Graceful: do not spam - log throttled
       now_ts = time.time()
-      if now_ts - self._last_connect_error_log_ts > 5:
-        logger.error(f"Error in _run_in_websocket_thread: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        self._last_connect_error_log_ts = now_ts
+      if os.environ.get('LEOSAC_WEB_LOG_LEVEL', '').upper() != 'NONE':
+        if now_ts - self._last_connect_error_log_ts > 5:
+          logger.error(f"Error in _run_in_websocket_thread: {e}")
+          logger.error(f"Traceback: {traceback.format_exc()}")
+          self._last_connect_error_log_ts = now_ts
       # Re-raise to let callers degrade gracefully
       raise
 

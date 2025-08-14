@@ -17,6 +17,7 @@ import traceback
 import re
 from services.websocket_service import leosac_client
 from utils.rank_converter import convert_rank_int_to_string, convert_rank_string_to_int, USER_RANKS
+from utils.permissions import has_permission, get_permissions_for_rank
 from routes.users import users_bp
 from routes.credentials import credentials_bp
 from routes.schedules import schedules_bp
@@ -33,10 +34,24 @@ from routes.alarms import alarms_bp
 load_dotenv()
 
 # Configure detailed logging
+# Allow disabling verbose logging via env var to speed things up
+LOG_LEVEL = os.environ.get('LEOSAC_WEB_LOG_LEVEL', 'INFO').upper()
+try:
+    level_const = getattr(logging, LOG_LEVEL, logging.INFO)
+except Exception:
+    level_const = logging.INFO
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=level_const,
     format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s'
 )
+# Reduce werkzeug server noise to match our level
+try:
+    logging.getLogger('werkzeug').setLevel(level_const)
+except Exception:
+    pass
+# Optionally disable all logging when set to NONE
+if LOG_LEVEL == 'NONE':
+    logging.disable(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -373,6 +388,30 @@ def unique_timeframe_count(timeframes):
     return len(pairs)
 
 app.jinja_env.filters['unique_timeframe_count'] = unique_timeframe_count
+app.jinja_env.globals['has_permission'] = has_permission
+app.jinja_env.globals['get_permissions_for_rank'] = get_permissions_for_rank
+
+@app.context_processor
+def inject_nav_visibility():
+    if not current_user.is_authenticated:
+        return {}
+    def safe_len(callable_fn):
+        try:
+            data = callable_fn() or []
+            return len(data)
+        except Exception:
+            return 0
+    nav_visibility = {
+        'users': safe_len(leosac_client.get_users) > 0,
+        'groups': safe_len(leosac_client.get_groups) > 0,
+        'credentials': safe_len(leosac_client.get_credentials) > 0,
+        'schedules': safe_len(leosac_client.get_schedules) > 0,
+        'zones': safe_len(leosac_client.get_zones) > 0,
+        'doors': safe_len(leosac_client.get_doors) > 0,
+        # Audit visibility can be heavy; default to False unless we add a lightweight check
+        'audit': False,
+    }
+    return dict(nav_visibility=nav_visibility)
 
 if __name__ == '__main__':
     logger.info("=== MAIN APPLICATION STARTING ===")

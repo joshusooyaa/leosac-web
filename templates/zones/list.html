@@ -10,9 +10,11 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Zone List</h5>
+                    {% if has_permission(current_user.rank, 'zones.create') %}
                     <a href="{{ url_for('zones.zones_create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Add Zone
                     </a>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -38,14 +40,18 @@
                                           <a class="btn btn-sm btn-outline-primary btn-icon" title="View" href="{{ url_for('zones.zone_detail', zone_id=zone.id) }}">
                                             <i class="fas fa-eye"></i>
                                           </a>
+                                          {% if has_permission(current_user.rank, 'zones.update') %}
                                           <a class="btn btn-sm btn-outline-warning btn-icon" title="Edit" href="{{ url_for('zones.zone_edit', zone_id=zone.id) }}">
                                             <i class="fas fa-edit"></i>
                                           </a>
+                                          {% endif %}
+                                          {% if has_permission(current_user.rank, 'zones.delete') %}
                                           <form method="POST" action="{{ url_for('zones.zone_delete', zone_id=zone.id) }}" style="display:inline" onsubmit="return confirm('Delete this zone?');">
                                             <button class="btn btn-sm btn-outline-danger btn-icon" title="Delete" type="submit">
                                               <i class="fas fa-trash"></i>
                                             </button>
                                           </form>
+                                          {% endif %}
                                         </div>
                                       </td>
                                     </tr>

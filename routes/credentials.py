@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from services.websocket_service import leosac_client
 from utils.rank_converter import USER_RANKS
+from utils.permissions import has_permission
 
 credentials_bp = Blueprint('credentials', __name__)
 
@@ -22,6 +23,9 @@ def credentials_list():
 @credentials_bp.route('/credentials/rfid/create', methods=['GET', 'POST'])
 @login_required
 def credentials_rfid_create():
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.create'):
+        flash('You do not have permission to create credentials.', 'error')
+        return redirect(url_for('credentials.credentials_list'))
     if request.method == 'POST':
         try:
             auth_state = leosac_client.get_auth_state()
@@ -97,6 +101,9 @@ def credential_view(credential_id):
 @credentials_bp.route('/credentials/<int:credential_id>/edit', methods=['GET', 'POST'])
 @login_required
 def credential_edit(credential_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.update'):
+        flash('You do not have permission to edit credentials.', 'error')
+        return redirect(url_for('credentials.credentials_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:
@@ -153,6 +160,9 @@ def credential_edit(credential_id):
 @credentials_bp.route('/credentials/<int:credential_id>/delete', methods=['POST'])
 @login_required
 def credential_delete(credential_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.delete'):
+        flash('You do not have permission to delete credentials.', 'error')
+        return redirect(url_for('credentials.credentials_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:

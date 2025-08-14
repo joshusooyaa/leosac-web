@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user, logout_user
 from services.websocket_service import leosac_client
 from utils.rank_converter import USER_RANKS
+from utils.permissions import has_permission
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,10 @@ def users_list():
 @login_required
 def users_create():
     """Create a new user"""
+    # Gate UI-level create by rank to avoid permission denied
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'users.create'):
+        flash('You do not have permission to create users.', 'error')
+        return redirect(url_for('users.users_list'))
     if request.method == 'POST':
         try:
             # Check if WebSocket client is connected
@@ -110,6 +115,9 @@ def users_create():
 @login_required
 def users_delete(user_id):
     """Delete a user"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'users.delete'):
+        flash('You do not have permission to delete users.', 'error')
+        return redirect(url_for('users.users_list'))
     try:
         # Check if WebSocket client is connected
         auth_state = leosac_client.get_auth_state()

@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
+from utils.permissions import has_permission
 from services.websocket_service import leosac_client
 import re
 import logging
@@ -68,6 +69,9 @@ def schedules_list():
 @schedules_bp.route('/schedules/create', methods=['GET', 'POST'])
 @login_required
 def schedules_create():
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'schedules.create'):
+        flash('You do not have permission to create schedules.', 'error')
+        return redirect(url_for('schedules.schedules_list'))
     if request.method == 'POST':
         try:
             auth_state = leosac_client.get_auth_state()
@@ -199,6 +203,9 @@ def schedule_view(schedule_id):
 @schedules_bp.route('/schedules/<int:schedule_id>/edit', methods=['GET', 'POST'])
 @login_required
 def schedule_edit(schedule_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'schedules.update'):
+        flash('You do not have permission to edit schedules.', 'error')
+        return redirect(url_for('schedules.schedules_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:
@@ -321,6 +328,9 @@ def schedule_edit(schedule_id):
 @schedules_bp.route('/schedules/<int:schedule_id>/delete', methods=['POST'])
 @login_required
 def schedule_delete(schedule_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'schedules.delete'):
+        flash('You do not have permission to delete schedules.', 'error')
+        return redirect(url_for('schedules.schedules_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:

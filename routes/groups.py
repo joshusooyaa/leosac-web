@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
+from utils.permissions import has_permission
 from services.websocket_service import leosac_client
 import logging
 import traceback
@@ -103,6 +104,9 @@ def group_detail(group_id):
 @groups_bp.route('/groups/create', methods=['GET', 'POST'])
 @login_required
 def groups_create():
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'groups.create'):
+        flash('You do not have permission to create groups.', 'error')
+        return redirect(url_for('groups.groups_list'))
     if request.method == 'POST':
         try:
             auth_state = leosac_client.get_auth_state()
@@ -140,6 +144,9 @@ def groups_create():
 @groups_bp.route('/groups/<int:group_id>/edit', methods=['GET', 'POST'])
 @login_required
 def group_edit(group_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'groups.update'):
+        flash('You do not have permission to edit groups.', 'error')
+        return redirect(url_for('groups.groups_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:
@@ -251,6 +258,9 @@ def group_edit(group_id):
 @groups_bp.route('/groups/<int:group_id>/delete', methods=['POST'])
 @login_required
 def group_delete(group_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'groups.delete'):
+        flash('You do not have permission to delete groups.', 'error')
+        return redirect(url_for('groups.groups_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:

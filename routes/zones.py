@@ -4,7 +4,8 @@ Zone management routes for Flask application.
 import logging
 import traceback
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
+from utils.permissions import has_permission
 from services.websocket_service import leosac_client
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ def zones_list():
 @login_required
 def zones_create():
     """Create a new zone"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'zones.create'):
+        flash('You do not have permission to create zones.', 'error')
+        return redirect(url_for('zones.zones_list'))
     if request.method == 'POST':
         try:
             auth_state = leosac_client.get_auth_state()
@@ -106,6 +110,9 @@ def zone_detail(zone_id):
 @login_required
 def zone_edit(zone_id):
     """Edit a zone"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'zones.update'):
+        flash('You do not have permission to edit zones.', 'error')
+        return redirect(url_for('zones.zones_list'))
     if request.method == 'POST':
         try:
             auth_state = leosac_client.get_auth_state()
@@ -159,6 +166,9 @@ def zone_edit(zone_id):
 @login_required
 def zone_delete(zone_id):
     """Delete a zone"""
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'zones.delete'):
+        flash('You do not have permission to delete zones.', 'error')
+        return redirect(url_for('zones.zones_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:

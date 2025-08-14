@@ -10,12 +10,16 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">User Profile: {{ user.username }}</h4>
                     <div>
+                        {% if has_permission(current_user.rank, 'users.update') and (current_user.id == user.id or has_permission(current_user.rank, 'users.update')) %}
                         <a href="{{ url_for('users.profile_edit', user_id=user.id) }}" class="btn btn-primary">
                             <i class="fas fa-edit"></i> Edit Profile
                         </a>
+                        {% endif %}
+                        {% if has_permission(current_user.rank, 'users.view') %}
                         <a href="{{ url_for('users.users_list') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Back to Users
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-body">
@@ -110,7 +114,7 @@
                                     {% endif %}
                                     
                                     <!-- Delete User Button (for administrators) -->
-                                    {% if user.id != current_user.id and current_user.rank == 'administrator' %}
+                                    {% if user.id != current_user.id and has_permission(current_user.rank, 'users.delete') %}
                                     <div class="mt-3">
                                         <form method="POST" action="{{ url_for('users.users_delete', user_id=user.id) }}" 
                                               style="display: inline;" 
@@ -124,37 +128,39 @@
                                 </div>
                             </div>
                             
+                            {% if has_permission(current_user.rank, 'users.change_password') and current_user.id == user.id %}
                             <!-- Password Change Section -->
                             <div class="row mt-4">
-                                <div class="col-12">
-                                    <h5>Change Password</h5>
-                                    <form method="POST" action="{{ url_for('users.profile_change_password', user_id=user.id) }}" class="row">
-                                        <div class="col-md-4">
-                                            <div class="mb-3">
-                                                <label for="current_password" class="form-label">Current Password</label>
-                                                <input type="password" class="form-control" id="current_password" name="current_password">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="mb-3">
-                                                <label for="new_password" class="form-label">New Password</label>
-                                                <input type="password" class="form-control" id="new_password" name="new_password" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="mb-3">
-                                                <label for="new_password2" class="form-label">Confirm New Password</label>
-                                                <input type="password" class="form-control" id="new_password2" name="new_password2" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-key"></i> Change Password
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
+                              <div class="col-12">
+                                <h5>Change Password</h5>
+                                <form method="POST" action="{{ url_for('users.profile_change_password', user_id=user.id) }}" class="row">
+                                  <div class="col-md-4">
+                                    <div class="mb-3">
+                                      <label for="current_password" class="form-label">Current Password</label>
+                                      <input type="password" class="form-control" id="current_password" name="current_password">
+                                    </div>
+                                  </div>
+                                  <div class="col-md-4">
+                                    <div class="mb-3">
+                                      <label for="new_password" class="form-label">New Password</label>
+                                      <input type="password" class="form-control" id="new_password" name="new_password" required>
+                                    </div>
+                                  </div>
+                                  <div class="col-md-4">
+                                    <div class="mb-3">
+                                      <label for="new_password2" class="form-label">Confirm New Password</label>
+                                      <input type="password" class="form-control" id="new_password2" name="new_password2" required>
+                                    </div>
+                                  </div>
+                                  <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                      <i class="fas fa-key"></i> Change Password
+                                    </button>
+                                  </div>
+                                </form>
+                              </div>
                             </div>
+                            {% endif %}
                         </div>
 
                         <!-- Groups Tab -->

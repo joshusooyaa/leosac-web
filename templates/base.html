@@ -772,6 +772,7 @@
     {% if current_user.is_authenticated %}
     <div id="wrapper">
         <!-- Sidebar -->
+        {% if has_permission(current_user.rank, 'nav.dashboard') or has_permission(current_user.rank, 'nav.users') or has_permission(current_user.rank, 'nav.groups') or has_permission(current_user.rank, 'nav.credentials') or has_permission(current_user.rank, 'nav.schedules') or has_permission(current_user.rank, 'nav.zones') or has_permission(current_user.rank, 'nav.doors') or has_permission(current_user.rank, 'nav.audit') %}
         <nav class="sidebar" id="sidebar">
             <div class="sidebar-brand d-flex align-items-center justify-content-center">
                 <i class="fas fa-shield-alt sidebar-brand-icon"></i>
@@ -782,59 +783,77 @@
             
             <!-- Navigation Items -->
             <ul class="nav flex-column">
+                {% if has_permission(current_user.rank, 'nav.dashboard') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">
                         <i class="fas fa-fw fa-tachometer-alt"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
+                {% endif %}
 
                 
                 <hr class="sidebar-divider">
                 
+                {% if has_permission(current_user.rank, 'nav.users') or has_permission(current_user.rank, 'nav.groups') or has_permission(current_user.rank, 'nav.credentials') or has_permission(current_user.rank, 'nav.schedules') %}
                 <div class="sidebar-heading">Access</div>
                 
-                <li class="nav-item">
+                {% if has_permission(current_user.rank, 'nav.users') and nav_visibility.users %}
+                <li class="nav-item" id="nav-users-item">
                     <a class="nav-link" href="{{ url_for('users.users_list') }}">
                         <i class="fas fa-fw fa-user"></i>
                         <span>Users</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% endif %}
+                {% if has_permission(current_user.rank, 'nav.groups') and nav_visibility.groups %}
+                <li class="nav-item" id="nav-groups-item">
                     <a class="nav-link" href="{{ url_for('groups.groups_list') }}">
                         <i class="fas fa-fw fa-users"></i>
                         <span>Groups</span>
                     </a>
                 </li>
-                <li class="nav-item">
+                {% endif %}
+                {% if has_permission(current_user.rank, 'nav.credentials') and nav_visibility.credentials %}
+                <li class="nav-item" id="nav-credentials-item">
                     <a class="nav-link" href="{{ url_for('credentials.credentials_list') }}">
                         <i class="fas fa-fw fa-id-badge"></i>
                         <span>Credentials</span>
                     </a>
                 </li>
+                {% endif %}
+                {% if has_permission(current_user.rank, 'nav.schedules') and nav_visibility.schedules %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('schedules.schedules_list') }}">
                         <i class="fas fa-fw fa-calendar"></i>
                         <span>Schedules</span>
                     </a>
                 </li>
+                {% endif %}
                 
                 <hr class="sidebar-divider">
                 
+                {% if has_permission(current_user.rank, 'nav.zones') or has_permission(current_user.rank, 'nav.doors') %}
                 <div class="sidebar-heading">Hardware</div>
                 
+                {% if has_permission(current_user.rank, 'nav.zones') and nav_visibility.zones %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('zones.zones_list') }}">
                         <i class="fas fa-fw fa-building"></i>
                         <span>Zones</span>
                     </a>
                 </li>
+                {% endif %}
+                {% endif %}
+                {% if has_permission(current_user.rank, 'nav.doors') and nav_visibility.doors %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('doors.doors_list') }}">
                         <i class="fas fa-fw fa-door-open"></i>
                         <span>Doors</span>
                     </a>
                 </li>
+                {% endif %}
                             <li class="nav-item">
                 <!-- <a class="nav-link" href="{{ url_for('access_points.access_points_list') }}">
                     <i class="fas fa-fw fa-dungeon"></i>
@@ -862,14 +881,17 @@
                         <span>Alarms</span>
                     </a>
                 </li>
+                {% if has_permission(current_user.rank, 'nav.audit') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('audit.auditlog') }}">
                         <i class="fas fa-fw fa-table"></i>
                         <span>Audit Log</span>
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </nav>
+        {% endif %}
         
         <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
@@ -1014,8 +1036,24 @@
           }
         }
 
-        setInterval(refreshStatus, 10000);
+        async function refreshNavVisibility() {
+          try {
+            const resp = await fetch("{{ url_for('api_dashboard_summary') }}");
+            const data = await resp.json();
+            if (data && data.success && data.counts) {
+              const groupsItem = document.getElementById('nav-groups-item');
+              const credsItem = document.getElementById('nav-credentials-item');
+              if (groupsItem) groupsItem.style.display = (data.counts.groups > 0) ? '' : 'none';
+              if (credsItem) credsItem.style.display = (data.counts.credentials > 0) ? '' : 'none';
+            }
+          } catch (e) {
+            // Leave as-is on failure
+          }
+        }
+
+        // Single initial load; no polling to avoid server overload
         refreshStatus();
+        refreshNavVisibility();
       })();
     </script>
     {% else %}
