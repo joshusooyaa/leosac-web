@@ -1,20 +1,426 @@
 {% extends "base.html" %}
 {% block title %}Help - Leosac Web{% endblock %}
-{% block page_title %}Help{% endblock %}
+{% block page_title %}Help & Documentation{% endblock %}
 {% block content %}
-<div class="col-lg-12 col-md-12">
-  <div class="card">
-    <div class="card-header"><h5 class="mb-0">Leosac Web – Admin Guide</h5></div>
-    <div class="card-body">
-      <p>This help page summarizes how to configure Users, Credentials, Groups, Schedules, Doors and Schedule Mappings so door access works as expected. See the README for full details.</p>
-      <ol>
-        <li>Create Users; optionally group them.</li>
-        <li>Create Credentials (RFID) with correct card-id and nb-bits; optionally set Owner.</li>
-        <li>Create Schedules with timeframes.</li>
-        <li>Create Schedule Mappings that connect Schedules to Users/Groups/Credentials and target Doors. If no doors are set, the mapping applies to all doors.</li>
-        <li>Verify by presenting the credential at the door and checking Audit/ Dashboard for GRANTED/DENIED.</li>
-      </ol>
-      <p>Auth decision is made by Leosac using the mapping and current time. The result is logged as an AuthEvent.</p>
+<div class="row">
+  <div class="col-lg-12">
+    <!-- System Overview -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>System Overview</h5>
+      </div>
+      <div class="card-body">
+        <p class="lead">Leosac Web is an access control management system that allows you to control who can access which doors and when. This system manages users, credentials (RFID cards), groups, schedules, and door access permissions.</p>
+        
+        <div class="alert alert-info">
+          <h6><i class="fas fa-lightbulb me-2"></i>How It Works</h6>
+          <p class="mb-0">When someone presents an RFID card at a door, the system checks their credentials, user permissions, group memberships, and active schedules to determine if access should be granted or denied.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Management Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-users me-2"></i>User Management</h5>
+      </div>
+      <div class="card-body">
+        <h6>What is a User?</h6>
+        <p>A user represents a person who can access the system. Users can be assigned to groups and can own credentials (RFID cards).</p>
+        
+        <h6>User Roles & Permissions</h6>
+        <div class="table-responsive">
+          <table class="table table-bordered">
+            <thead class="table-dark">
+              <tr>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Permissions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-primary">Admin</span></td>
+                <td>Full system access</td>
+                <td>Can manage all users, groups, credentials, schedules, doors, and system settings</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-success">Manager</span></td>
+                <td>Department or area manager</td>
+                <td>Can manage users and access within their assigned areas, view audit logs</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-info">User</span></td>
+                <td>Standard user</td>
+                <td>Can view their own profile and access history</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h6>How to Add a User</h6>
+        <ol>
+          <li>Go to <strong>Users</strong> in the sidebar</li>
+          <li>Click <strong>Create User</strong></li>
+          <li>Fill in required information:
+            <ul>
+              <li><strong>Username:</strong> Unique login name (e.g., "john.doe")</li>
+              <li><strong>Email:</strong> User's email address</li>
+              <li><strong>Full Name:</strong> User's complete name</li>
+              <li><strong>Rank:</strong> Select appropriate role (Admin, Manager, or User)</li>
+              <li><strong>Password:</strong> Secure password for login</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create User</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Credentials Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-id-badge me-2"></i>Credentials (RFID Cards)</h5>
+      </div>
+      <div class="card-body">
+        <h6>What is a Credential?</h6>
+        <p>A credential is an RFID card or key fob that contains a unique identifier. When presented at a door, this identifier is read and matched against the user's permissions.</p>
+        
+        <h6>Credential Components</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <ul>
+              <li><strong>Card ID:</strong> The unique number printed on the physical card</li>
+              <li><strong>Number of Bits:</strong> Technical specification (usually 26, 34, or 37 bits)</li>
+              <li><strong>Owner:</strong> The user assigned to this card</li>
+              <li><strong>Status:</strong> Active/Inactive state</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <div class="alert alert-warning">
+              <h6><i class="fas fa-exclamation-triangle me-2"></i>Important</h6>
+              <p class="mb-0">The Card ID must match exactly what's printed on the physical card. Even a single digit difference will prevent access.</p>
+            </div>
+          </div>
+        </div>
+
+        <h6>How to Add a Credential</h6>
+        <ol>
+          <li>Go to <strong>Credentials</strong> in the sidebar</li>
+          <li>Click <strong>Create Credential</strong></li>
+          <li>Enter the card details:
+            <ul>
+              <li><strong>Card ID:</strong> The exact number from the physical card</li>
+              <li><strong>Number of Bits:</strong> Select the correct bit length</li>
+              <li><strong>Owner:</strong> Select the user who will use this card</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create Credential</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Groups Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Groups</h5>
+      </div>
+      <div class="card-body">
+        <h6>What are Groups?</h6>
+        <p>Groups allow you to organize users with similar access needs. Instead of managing each user individually, you can assign permissions to groups and add users to those groups.</p>
+        
+        <h6>Common Group Examples</h6>
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <i class="fas fa-building fa-2x text-primary mb-2"></i>
+                <h6>Office Staff</h6>
+                <small class="text-muted">Access to main office areas</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <i class="fas fa-tools fa-2x text-warning mb-2"></i>
+                <h6>Maintenance</h6>
+                <small class="text-muted">Access to equipment rooms</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-light">
+              <div class="card-body text-center">
+                <i class="fas fa-user-shield fa-2x text-danger mb-2"></i>
+                <h6>Security</h6>
+                <small class="text-muted">Access to all areas</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h6>How to Create a Group</h6>
+        <ol>
+          <li>Go to <strong>Groups</strong> in the sidebar</li>
+          <li>Click <strong>Create Group</strong></li>
+          <li>Enter group information:
+            <ul>
+              <li><strong>Name:</strong> Descriptive group name (e.g., "Office Staff")</li>
+              <li><strong>Description:</strong> What this group is for</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create Group</strong></li>
+          <li>Add users to the group by editing the group and selecting members</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Schedules Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Schedules</h5>
+      </div>
+      <div class="card-body">
+        <h6>What are Schedules?</h6>
+        <p>Schedules define when access is allowed. They can specify time ranges, days of the week, and special dates (holidays, weekends, etc.).</p>
+        
+        <h6>Schedule Types</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <h6><i class="fas fa-clock me-2"></i>Time-based Schedules</h6>
+            <ul>
+              <li><strong>Business Hours:</strong> 9:00 AM - 5:00 PM, Monday-Friday</li>
+              <li><strong>Night Shift:</strong> 11:00 PM - 7:00 AM, Daily</li>
+              <li><strong>Weekend Access:</strong> 24 hours, Saturday-Sunday</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6><i class="fas fa-calendar-day me-2"></i>Special Schedules</h6>
+            <ul>
+              <li><strong>Holidays:</strong> No access on specific dates</li>
+              <li><strong>Maintenance Windows:</strong> Limited access during system updates</li>
+              <li><strong>Emergency Access:</strong> 24/7 access for security personnel</li>
+            </ul>
+          </div>
+        </div>
+
+        <h6>How to Create a Schedule</h6>
+        <ol>
+          <li>Go to <strong>Schedules</strong> in the sidebar</li>
+          <li>Click <strong>Create Schedule</strong></li>
+          <li>Configure the schedule:
+            <ul>
+              <li><strong>Name:</strong> Descriptive name (e.g., "Business Hours")</li>
+              <li><strong>Days:</strong> Select which days this schedule applies</li>
+              <li><strong>Start Time:</strong> When access begins</li>
+              <li><strong>End Time:</strong> When access ends</li>
+              <li><strong>Special Dates:</strong> Add holidays or exceptions</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create Schedule</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Schedule Mappings Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="fas fa-link me-2"></i>Schedule Mappings - The Key to Access Control</h6>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-success">
+          <h6><i class="fas fa-key me-2"></i>This is the Most Important Part!</h6>
+          <p class="mb-0">Schedule mappings connect users/groups/credentials to specific doors with specific time restrictions. Without proper mappings, no one can access any doors!</p>
+        </div>
+
+        <h6>What is a Schedule Mapping?</h6>
+        <p>A schedule mapping is a rule that says: "This user/group/credential can access this door during this schedule." It's the bridge between your users and your doors.</p>
+
+        <h6>Mapping Components</h6>
+        <div class="row">
+          <div class="col-md-6">
+            <ul>
+              <li><strong>Target:</strong> Who gets access (User, Group, or Credential)</li>
+              <li><strong>Schedule:</strong> When access is allowed</li>
+              <li><strong>Doors:</strong> Which doors they can access</li>
+              <li><strong>Priority:</strong> Order of evaluation (higher numbers = higher priority)</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <div class="card bg-info text-white">
+              <div class="card-body">
+                <h6><i class="fas fa-lightbulb me-2"></i>Pro Tip</h6>
+                <p class="mb-0">If no doors are specified in a mapping, it applies to ALL doors. This is useful for general access rules.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h6>How to Create a Schedule Mapping</h6>
+        <ol>
+          <li>Go to <strong>Schedules</strong> in the sidebar</li>
+          <li>Click <strong>Create Schedule Mapping</strong></li>
+          <li>Configure the mapping:
+            <ul>
+              <li><strong>Target Type:</strong> Select User, Group, or Credential</li>
+              <li><strong>Target:</strong> Choose the specific user/group/credential</li>
+              <li><strong>Schedule:</strong> Select the time schedule</li>
+              <li><strong>Doors:</strong> Choose specific doors or leave empty for all doors</li>
+              <li><strong>Priority:</strong> Set evaluation order (default: 1)</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create Schedule Mapping</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Doors Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-door-open me-2"></i>Doors & Hardware</h5>
+      </div>
+      <div class="card-body">
+        <h6>What are Doors?</h6>
+        <p>Doors represent physical access points that are controlled by the system. Each door can have different access rules and can be grouped into zones.</p>
+        
+        <h6>Door Components</h6>
+        <ul>
+          <li><strong>Name:</strong> Descriptive name (e.g., "Main Entrance", "Server Room")</li>
+          <li><strong>Zone:</strong> Physical area the door belongs to</li>
+          <li><strong>Status:</strong> Active/Inactive state</li>
+          <li><strong>Hardware ID:</strong> Unique identifier for the door controller</li>
+        </ul>
+
+        <h6>How to Add a Door</h6>
+        <ol>
+          <li>Go to <strong>Doors</strong> in the sidebar</li>
+          <li>Click <strong>Create Door</strong></li>
+          <li>Enter door information:
+            <ul>
+              <li><strong>Name:</strong> What to call this door</li>
+              <li><strong>Zone:</strong> Select which zone it's in</li>
+              <li><strong>Hardware ID:</strong> Technical identifier from the door controller</li>
+            </ul>
+          </li>
+          <li>Click <strong>Create Door</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Complete Workflow Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Complete Access Control Workflow</h5>
+      </div>
+      <div class="card-body">
+        <h6>Step-by-Step Process</h6>
+        <div class="row">
+          <div class="col-md-8">
+            <ol>
+              <li><strong>Create Users</strong> - Add people to the system</li>
+              <li><strong>Create Groups</strong> - Organize users by access needs</li>
+              <li><strong>Create Credentials</strong> - Assign RFID cards to users</li>
+              <li><strong>Create Schedules</strong> - Define when access is allowed</li>
+              <li><strong>Create Doors</strong> - Add physical access points</li>
+              <li><strong>Create Schedule Mappings</strong> - Connect everything together</li>
+              <li><strong>Test Access</strong> - Verify the system works</li>
+            </ol>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-success text-white">
+              <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-3x mb-2"></i>
+                <h6>Success!</h6>
+                <p class="mb-0">When all steps are complete, users can access doors according to their permissions and schedules.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h6>What Happens When Someone Swipes a Card?</h6>
+        <div class="alert alert-info">
+          <ol>
+            <li>The door reader scans the RFID card</li>
+            <li>The system identifies the card ID</li>
+            <li>The system looks up the card's owner (user)</li>
+            <li>The system checks all schedule mappings for that user</li>
+            <li>The system evaluates each mapping:
+              <ul>
+                <li>Is the mapping active?</li>
+                <li>Does it apply to this door?</li>
+                <li>Is the current time within the schedule?</li>
+                <li>What's the priority level?</li>
+              </ul>
+            </li>
+            <li>If any mapping allows access, the door unlocks</li>
+            <li>The access attempt is logged in the audit trail</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Troubleshooting Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-wrench me-2"></i>Troubleshooting Common Issues</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6><i class="fas fa-times-circle text-danger me-2"></i>Access Denied Issues</h6>
+            <ul>
+              <li><strong>Card not recognized:</strong> Check Card ID matches exactly</li>
+              <li><strong>Wrong time:</strong> Verify schedule is active</li>
+              <li><strong>Wrong door:</strong> Check door assignments in mappings</li>
+              <li><strong>User inactive:</strong> Ensure user account is active</li>
+              <li><strong>Credential inactive:</strong> Check credential status</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6><i class="fas fa-question-circle text-warning me-2"></i>System Issues</h6>
+            <ul>
+              <li><strong>Can't log in:</strong> Check username/password</li>
+              <li><strong>No permissions:</strong> Verify user role and permissions</li>
+              <li><strong>Missing data:</strong> Check if required items exist</li>
+              <li><strong>Connection errors:</strong> Verify system connectivity</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="alert alert-warning">
+          <h6><i class="fas fa-exclamation-triangle me-2"></i>Need More Help?</h6>
+          <p class="mb-0">Check the audit log to see exactly what happened during access attempts. The audit log shows all system activity and can help identify why access was granted or denied.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Reference Section -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-bookmark me-2"></i>Quick Reference</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <h6>Navigation Quick Links</h6>
+            <ul class="list-unstyled">
+              <li><i class="fas fa-user me-2"></i><a href="{{ url_for('users.users_list') }}">Users</a> - Manage people</li>
+              <li><i class="fas fa-users me-2"></i><a href="{{ url_for('groups.groups_list') }}">Groups</a> - Organize users</li>
+              <li><i class="fas fa-id-badge me-2"></i><a href="{{ url_for('credentials.credentials_list') }}">Credentials</a> - Manage RFID cards</li>
+              <li><i class="fas fa-calendar-alt me-2"></i><a href="{{ url_for('schedules.schedules_list') }}">Schedules</a> - Set time rules</li>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <h6>System Status</h6>
+            <ul class="list-unstyled">
+              <li><i class="fas fa-door-open me-2"></i><a href="{{ url_for('doors.doors_list') }}">Doors</a> - Access points</li>
+              <li><i class="fas fa-building me-2"></i><a href="{{ url_for('zones.zones_list') }}">Zones</a> - Physical areas</li>
+              <li><i class="fas fa-table me-2"></i><a href="{{ url_for('audit.auditlog') }}">Audit Log</a> - Activity history</li>
+              <li><i class="fas fa-bell me-2"></i><a href="{{ url_for('alarms.alarms_page') }}">Alarms</a> - System alerts</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
