@@ -62,7 +62,7 @@
                         <tr>
                           <td>{{ timeframe.start_time }} - {{ timeframe.end_time }}</td>
                           <td>
-                            {% set day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            {% set day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
                             {% set selected_days = [] %}
                             {% for day_num in timeframe.days %}
                               {% set _ = selected_days.append(day_names[day_num]) %}

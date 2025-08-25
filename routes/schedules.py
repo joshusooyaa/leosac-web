@@ -100,8 +100,8 @@ def schedules_create():
                 if start_time and end_time:
                     selected_days = []
                     for day_name, day_value in [
-                        ('monday', 0), ('tuesday', 1), ('wednesday', 2), 
-                        ('thursday', 3), ('friday', 4), ('saturday', 5), ('sunday', 6)
+                        ('sunday', 0), ('monday', 1), ('tuesday', 2), ('wednesday', 3), 
+                        ('thursday', 4), ('friday', 5), ('saturday', 6)
                     ]:
                         if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
                             selected_days.append(day_value)
@@ -245,8 +245,8 @@ def schedule_edit(schedule_id):
                 if start_time and end_time:
                     selected_days = []
                     for day_name, day_value in [
-                        ('monday', 0), ('tuesday', 1), ('wednesday', 2), 
-                        ('thursday', 3), ('friday', 4), ('saturday', 5), ('sunday', 6)
+                        ('sunday', 0), ('monday', 1), ('tuesday', 2), ('wednesday', 3), 
+                        ('thursday', 4), ('friday', 5), ('saturday', 6)
                     ]:
                         if f'timeframes[{timeframe_counter}][days][{day_name}]' in request.form:
                             selected_days.append(day_value)
