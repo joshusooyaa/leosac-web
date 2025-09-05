@@ -395,21 +395,15 @@ app.jinja_env.globals['get_permissions_for_rank'] = get_permissions_for_rank
 def inject_nav_visibility():
     if not current_user.is_authenticated:
         return {}
-    def safe_len(callable_fn):
-        try:
-            data = callable_fn() or []
-            return len(data)
-        except Exception:
-            return 0
+    
     nav_visibility = {
-        'users': safe_len(leosac_client.get_users) > 0,
-        'groups': safe_len(leosac_client.get_groups) > 0,
-        'credentials': safe_len(leosac_client.get_credentials) > 0,
-        'schedules': safe_len(leosac_client.get_schedules) > 0,
-        'zones': safe_len(leosac_client.get_zones) > 0,
-        'doors': safe_len(leosac_client.get_doors) > 0,
-        # Audit visibility can be heavy; default to False unless we add a lightweight check
-        'audit': False,
+        'users': True,
+        'groups': True,
+        'credentials': True,
+        'schedules': True,
+        'zones': True,
+        'doors': True,
+        'audit': True,
     }
     return dict(nav_visibility=nav_visibility)
 

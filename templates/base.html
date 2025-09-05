@@ -881,12 +881,6 @@
                         <span>Alarms</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('main.help_page') }}">
-                        <i class="fas fa-fw fa-circle-question"></i>
-                        <span>Help</span>
-                    </a>
-                </li>
                 {% if has_permission(current_user.rank, 'nav.audit') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('audit.auditlog') }}">
@@ -1068,7 +1062,6 @@
 
         // Single initial load; no polling to avoid server overload
         refreshStatus();
-        refreshNavVisibility();
       })();
     </script>
     {% else %}

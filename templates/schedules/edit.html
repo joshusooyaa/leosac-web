@@ -123,11 +123,12 @@
               <div id="mappingsContainer">
                 {% if schedule.mapping %}
                   {% for mapping in schedule.mapping %}
-                    <div class="mapping-panel card mb-3" data-mapping-id="{{ loop.index0 }}">
+                    {% set mapping_index = loop.index0 %}
+                    <div class="mapping-panel card mb-3" data-mapping-id="{{ mapping_index }}">
                       <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
                           <label>Alias:</label>
-                          <input type="text" class="form-control d-inline-block w-auto" name="mappings[{{ loop.index0 }}][alias]" value="{{ mapping.alias }}" required>
+                          <input type="text" class="form-control d-inline-block w-auto" name="mappings[{{ mapping_index }}][alias]" value="{{ mapping.alias }}" required>
                         </div>
                         <button type="button" class="btn btn-sm btn-danger remove-mapping"><i class="fas fa-trash"></i> Remove</button>
                       </div>
@@ -138,8 +139,8 @@
                             <div class="form-group">
                               {% for user in users %}
                                 <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][users][]" value="{{ user.id }}" id="mapping-{{ loop.index0 }}-user-{{ user.id }}" {% if user.id in mapping.users %}checked{% endif %}>
-                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-user-{{ user.id }}">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ mapping_index }}][users][]" value="{{ user.id }}" id="mapping-{{ mapping_index }}-user-{{ user.id }}" {% if user.id in mapping.users %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ mapping_index }}-user-{{ user.id }}">
                                     {{ user.username }} ({{ user.firstname }} {{ user.lastname }})
                                   </label>
                                 </div>
@@ -151,8 +152,8 @@
                             <div class="form-group">
                               {% for group in groups %}
                                 <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][groups][]" value="{{ group.id }}" id="mapping-{{ loop.index0 }}-group-{{ group.id }}" {% if group.id in mapping.groups %}checked{% endif %}>
-                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-group-{{ group.id }}">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ mapping_index }}][groups][]" value="{{ group.id }}" id="mapping-{{ mapping_index }}-group-{{ group.id }}" {% if group.id in mapping.groups %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ mapping_index }}-group-{{ group.id }}">
                                     {{ group.name }}
                                   </label>
                                 </div>
@@ -166,8 +167,8 @@
                             <div class="form-group">
                               {% for cred in credentials %}
                                 <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][credentials][]" value="{{ cred.id }}" id="mapping-{{ loop.index0 }}-cred-{{ cred.id }}" {% if cred.id in mapping.credentials %}checked{% endif %}>
-                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-cred-{{ cred.id }}">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ mapping_index }}][credentials][]" value="{{ cred.id }}" id="mapping-{{ mapping_index }}-cred-{{ cred.id }}" {% if cred.id in mapping.credentials %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ mapping_index }}-cred-{{ cred.id }}">
                                     {{ cred.alias }} ({{ cred.type }})
                                   </label>
                                 </div>
@@ -179,8 +180,8 @@
                             <div class="form-group">
                               {% for door in doors %}
                                 <div class="form-check">
-                                  <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][doors][]" value="{{ door.id }}" id="mapping-{{ loop.index0 }}-door-{{ door.id }}" {% if door.id in mapping.doors %}checked{% endif %}>
-                                  <label class="form-check-label" for="mapping-{{ loop.index0 }}-door-{{ door.id }}">
+                                  <input class="form-check-input" type="checkbox" name="mappings[{{ mapping_index }}][doors][]" value="{{ door.id }}" id="mapping-{{ mapping_index }}-door-{{ door.id }}" {% if door.id in mapping.doors %}checked{% endif %}>
+                                  <label class="form-check-label" for="mapping-{{ mapping_index }}-door-{{ door.id }}">
                                     {{ door.attributes.alias or ('Door ' ~ door.id) }}
                                   </label>
                                 </div>
@@ -193,8 +194,8 @@
                                {% set mapping_zones = mapping.zones or [] %}
                                {% for zone in zones %}
                                  <div class="form-check">
-                                   <input class="form-check-input" type="checkbox" name="mappings[{{ loop.index0 }}][zones][]" value="{{ zone.id }}" id="mapping-{{ loop.index0 }}-zone-{{ zone.id }}" {% if zone.id in mapping_zones %}checked{% endif %}>
-                                   <label class="form-check-label" for="mapping-{{ loop.index0 }}-zone-{{ zone.id }}">
+                                   <input class="form-check-input" type="checkbox" name="mappings[{{ mapping_index }}][zones][]" value="{{ zone.id }}" id="mapping-{{ mapping_index }}-zone-{{ zone.id }}" {% if zone.id in mapping_zones %}checked{% endif %}>
+                                   <label class="form-check-label" for="mapping-{{ mapping_index }}-zone-{{ zone.id }}">
                                      {{ zone.attributes.alias or ('Zone ' ~ zone.id) }}
                                    </label>
                                  </div>

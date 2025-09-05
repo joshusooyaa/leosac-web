@@ -267,46 +267,34 @@ def schedule_edit(schedule_id):
                     m = _re.match(r'mappings\[(\d+)\]', key)
                     if m:
                         mapping_indices.add(int(m.group(1)))
-            all_users = []
-            all_groups = []
-            all_credentials = []
-            all_doors = []
-            alias = None
+            
+            # Process each mapping separately to preserve individual mappings
             for idx in sorted(mapping_indices):
-                this_alias = request.form.get(f'mappings[{idx}][alias]', '').strip()
-                if this_alias and not alias:
-                    alias = this_alias
+                alias = request.form.get(f'mappings[{idx}][alias]', '').strip()
                 users_selected = request.form.getlist(f'mappings[{idx}][users][]')
                 groups_selected = request.form.getlist(f'mappings[{idx}][groups][]')
                 credentials_selected = request.form.getlist(f'mappings[{idx}][credentials][]')
                 doors_selected = request.form.getlist(f'mappings[{idx}][doors][]')
                 zones_selected = request.form.getlist(f'mappings[{idx}][zones][]')
-                all_users.extend([int(uid) for uid in users_selected if uid and uid.strip()])
-                all_groups.extend([int(gid) for gid in groups_selected if gid and gid.strip()])
-                all_credentials.extend([int(cid) for cid in credentials_selected if cid and cid.strip()])
-                all_doors.extend([int(did) for did in doors_selected if did and did.strip()])
-                # store zones per panel; we only build one composite mapping
-                # so we can collect them into a single set afterwards
-                # We will compute all_zones after loop
-                if 'all_zones' not in locals():
-                    all_zones = []
-                all_zones.extend([int(zid) for zid in zones_selected if zid and zid.strip()])
-            all_users = list(set(all_users))
-            all_groups = list(set(all_groups))
-            all_credentials = list(set(all_credentials))
-            all_doors = list(set(all_doors))
-            all_zones = list(set(all_zones)) if 'all_zones' in locals() else []
-            mapping_data = []
-            if alias and (all_users or all_groups or all_credentials or all_doors or all_zones):
-                mapping = {
-                    'alias': alias,
-                    'users': all_users,
-                    'groups': all_groups,
-                    'credentials': all_credentials,
-                    'doors': all_doors,
-                    'zones': all_zones
-                }
-                mapping_data.append(mapping)
+                
+                # Convert to integers and filter out empty values
+                users = [int(uid) for uid in users_selected if uid and uid.strip()]
+                groups = [int(gid) for gid in groups_selected if gid and gid.strip()]
+                credentials = [int(cid) for cid in credentials_selected if cid and cid.strip()]
+                doors = [int(did) for did in doors_selected if did and did.strip()]
+                zones = [int(zid) for zid in zones_selected if zid and zid.strip()]
+                
+                # Only add mapping if it has an alias and at least one selection
+                if alias and (users or groups or credentials or doors or zones):
+                    mapping = {
+                        'alias': alias,
+                        'users': users,
+                        'groups': groups,
+                        'credentials': credentials,
+                        'doors': doors,
+                        'zones': zones
+                    }
+                    mapping_data.append(mapping)
             schedule_data = {
                 'name': name,
                 'description': description,
