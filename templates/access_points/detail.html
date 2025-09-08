@@ -83,19 +83,20 @@
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+        <div class="modal-content" style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
+            <div class="modal-header" style="background: var(--surface-2); border-bottom: 1px solid var(--border);">
+                <h5 class="modal-title" id="deleteModalLabel" style="color: var(--text);">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Confirm Delete
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: var(--text); background: none; border: none; font-size: 1.5rem; padding: 0; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                    <span aria-hidden="true" style="color: var(--text);">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                Are you sure you want to delete the access point "<span id="accessPointName"></span>"?
-                <br><br>
-                <strong>Warning:</strong> This action cannot be undone.
+            <div class="modal-body" style="background: var(--surface);">
+                <p style="color: var(--text);">Are you sure you want to delete the access point "<span id="accessPointName" style="color: var(--warning); font-weight: 600;"></span>"?</p>
+                <p style="color: var(--danger);"><strong>This action cannot be undone.</strong></p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="background: var(--surface-2); border-top: 1px solid var(--border);">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <form id="deleteForm" method="POST" style="display: inline;">
                     <button type="submit" class="btn btn-danger">Delete Access Point</button>
@@ -109,7 +110,50 @@
 function confirmDelete(accessPointId, accessPointName) {
     document.getElementById('accessPointName').textContent = accessPointName;
     document.getElementById('deleteForm').action = "{{ url_for('access_points.access_point_delete', access_point_id=0) }}".replace('0', accessPointId);
-    $('#deleteModal').modal('show');
+    
+    // Use Bootstrap 5 modal API
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
 }
+
+// Ensure modal dismissal works properly
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('deleteModal');
+  const closeBtn = modal.querySelector('.close');
+  const cancelBtn = modal.querySelector('.btn-secondary');
+  
+  // Close button (×) click handler
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      console.log('Close button clicked');
+      const modalInstance = bootstrap.Modal.getInstance(modal);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+    });
+  }
+  
+  // Cancel button click handler
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      console.log('Cancel button clicked');
+      const modalInstance = bootstrap.Modal.getInstance(modal);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+    });
+  }
+  
+  // Close on overlay click (Bootstrap 5 handles this automatically)
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+      console.log('Overlay clicked');
+      const modalInstance = bootstrap.Modal.getInstance(modal);
+      if (modalInstance) {
+        modalInstance.hide();
+      }
+    }
+  });
+});
 </script>
 {% endblock %} 
