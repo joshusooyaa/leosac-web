@@ -14,8 +14,26 @@ import traceback
 from datetime import datetime, timezone
 from config.settings import WEBSOCKET_URL, WEBSOCKET_URLS
 from utils.rank_converter import convert_rank_int_to_string, convert_rank_string_to_int
+import re
 
 logger = logging.getLogger(__name__)
+
+def format_datetime_for_input(datetime_str):
+  """Format datetime string for HTML datetime-local input"""
+  if not datetime_str:
+    return ''
+  
+  try:
+    # Remove timezone info if present
+    datetime_str = re.sub(r'[+-]\d{2}:\d{2}$', '', datetime_str)
+    datetime_str = re.sub(r'Z$', '', datetime_str)
+    
+    # Parse and format for datetime-local input
+    dt = datetime.fromisoformat(datetime_str)
+    return dt.strftime('%Y-%m-%dT%H:%M')
+  except Exception as e:
+    logger.warning(f"Could not format datetime '{datetime_str}': {e}")
+    return ''
 
 class LeosacWebSocketService:
   """Thread-safe WebSocket service for Flask with extensive debugging"""
@@ -542,6 +560,10 @@ class LeosacWebSocketService:
           
           logger.debug(f"User {user_data.get('id')}: rank_int={rank_int}, rank_string={rank_string}")
           
+          # Format validity dates for display
+          validity_start_raw = user_data.get('attributes', {}).get('validity-start')
+          validity_end_raw = user_data.get('attributes', {}).get('validity-end')
+          
           user = {
             'id': user_data.get('id'),
             'username': user_data.get('attributes', {}).get('username'),
@@ -550,8 +572,10 @@ class LeosacWebSocketService:
             'email': user_data.get('attributes', {}).get('email'),
             'rank': rank_string,
             'validity_enabled': user_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
-            'validity_start': user_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
-            'validity_end': user_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
+            'validity_start': format_datetime_for_input(validity_start_raw),  # Format for HTML input
+            'validity_end': format_datetime_for_input(validity_end_raw),  # Format for HTML input
+            'validity_start_raw': validity_start_raw,  # Keep original for display
+            'validity_end_raw': validity_end_raw,  # Keep original for display
             'version': user_data.get('attributes', {}).get('version', 0),
             # Include relationship data that's already in the response
             'relationships': user_data.get('relationships', {})
@@ -591,6 +615,10 @@ class LeosacWebSocketService:
         rank_int = user_data.get('attributes', {}).get('rank', 0)
         rank_string = convert_rank_int_to_string(rank_int)
         
+        # Format validity dates for HTML datetime-local inputs
+        validity_start_raw = user_data.get('attributes', {}).get('validity-start')
+        validity_end_raw = user_data.get('attributes', {}).get('validity-end')
+        
         user = {
           'id': user_data.get('id'),
           'username': user_data.get('attributes', {}).get('username'),
@@ -599,8 +627,10 @@ class LeosacWebSocketService:
           'email': user_data.get('attributes', {}).get('email'),
           'rank': rank_string,
           'validity_enabled': user_data.get('attributes', {}).get('validity-enabled', False),  # Handle hyphens from server
-          'validity_start': user_data.get('attributes', {}).get('validity-start'),  # Handle hyphens from server
-          'validity_end': user_data.get('attributes', {}).get('validity-end'),  # Handle hyphens from server
+          'validity_start': format_datetime_for_input(validity_start_raw),  # Format for HTML input
+          'validity_end': format_datetime_for_input(validity_end_raw),  # Format for HTML input
+          'validity_start_raw': validity_start_raw,  # Keep original for display
+          'validity_end_raw': validity_end_raw,  # Keep original for display
           'version': user_data.get('attributes', {}).get('version', 0),
           # Include relationship data that's already in the response
           'relationships': user_data.get('relationships', {})
@@ -621,6 +651,17 @@ class LeosacWebSocketService:
       if 'rank' in user_data:
         user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
       
+      # Format validity data for backend (nested under 'validity' key)
+      if 'validity_enabled' in user_data or 'validity_start' in user_data or 'validity_end' in user_data:
+        validity_data = {}
+        if 'validity_enabled' in user_data:
+          validity_data['validity-enabled'] = user_data.pop('validity_enabled')
+        if 'validity_start' in user_data:
+          validity_data['validity-start'] = user_data.pop('validity_start')
+        if 'validity_end' in user_data:
+          validity_data['validity-end'] = user_data.pop('validity_end')
+        user_data['validity'] = validity_data
+      
       result = self._run_in_websocket_thread('user.create', {
         'attributes': user_data
       })
@@ -640,6 +681,17 @@ class LeosacWebSocketService:
       if 'rank' in user_data:
         user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
       
+      # Format validity data for backend (nested under 'validity' key)
+      if 'validity_enabled' in user_data or 'validity_start' in user_data or 'validity_end' in user_data:
+        validity_data = {}
+        if 'validity_enabled' in user_data:
+          validity_data['validity-enabled'] = user_data.pop('validity_enabled')
+        if 'validity_start' in user_data:
+          validity_data['validity-start'] = user_data.pop('validity_start')
+        if 'validity_end' in user_data:
+          validity_data['validity-end'] = user_data.pop('validity_end')
+        user_data['validity'] = validity_data
+      
       result = self._run_in_websocket_thread('user.update', {
         'user_id': int(user_id),
         'attributes': user_data
@@ -650,6 +702,42 @@ class LeosacWebSocketService:
       return success, result
     except Exception as e:
       logger.error(f"✗ Error updating user {user_id}: {e}")
+      return False, {'error': str(e)}
+
+  def disable_user(self, user_id):
+    """Disable a user (thread-safe)"""
+    logger.info(f"=== DISABLING USER: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user.update', {
+        'user_id': int(user_id),
+        'attributes': {
+          'validity-enabled': False
+        }
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} User disable {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error disabling user {user_id}: {e}")
+      return False, {'error': str(e)}
+
+  def enable_user(self, user_id):
+    """Enable a user (thread-safe)"""
+    logger.info(f"=== ENABLING USER: {user_id} ===")
+    try:
+      result = self._run_in_websocket_thread('user.update', {
+        'user_id': int(user_id),
+        'attributes': {
+          'validity-enabled': True
+        }
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} User enable {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error enabling user {user_id}: {e}")
       return False, {'error': str(e)}
 
   def delete_user(self, user_id):
@@ -869,6 +957,17 @@ class LeosacWebSocketService:
       # Convert rank string to integer for server
       if 'rank' in user_data:
         user_data['rank'] = convert_rank_string_to_int(user_data['rank'])
+      
+      # Format validity data for backend (nested under 'validity' key)
+      if 'validity_enabled' in user_data or 'validity_start' in user_data or 'validity_end' in user_data:
+        validity_data = {}
+        if 'validity_enabled' in user_data:
+          validity_data['validity-enabled'] = user_data.pop('validity_enabled')
+        if 'validity_start' in user_data:
+          validity_data['validity-start'] = user_data.pop('validity_start')
+        if 'validity_end' in user_data:
+          validity_data['validity-end'] = user_data.pop('validity_end')
+        user_data['validity'] = validity_data
       
       result = self._run_in_websocket_thread('user.update', {
         'user_id': int(user_id),

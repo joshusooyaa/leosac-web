@@ -327,4 +327,62 @@ def profile_change_password(user_id):
         
     except Exception as e:
         flash(f'Error changing password: {str(e)}', 'error')
+        return redirect(url_for('users.profile', user_id=user_id))
+
+@users_bp.route('/profile/<int:user_id>/disable', methods=['POST'])
+@login_required
+def profile_disable(user_id):
+    """Disable a user"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('users.profile', user_id=user_id))
+        
+        # Disable user via WebSocket
+        success, result = leosac_client.disable_user(user_id)
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
+        
+        if success:
+            flash('User disabled successfully!', 'success')
+        else:
+            error_msg = result.get('status_string', 'Unknown error')
+            flash(f'Failed to disable user: {error_msg}', 'error')
+        
+        return redirect(url_for('users.profile', user_id=user_id))
+        
+    except Exception as e:
+        flash(f'Error disabling user: {str(e)}', 'error')
+        return redirect(url_for('users.profile', user_id=user_id))
+
+@users_bp.route('/profile/<int:user_id>/enable', methods=['POST'])
+@login_required
+def profile_enable(user_id):
+    """Enable a user"""
+    try:
+        # Check if WebSocket client is connected
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('users.profile', user_id=user_id))
+        
+        # Enable user via WebSocket
+        success, result = leosac_client.enable_user(user_id)
+        redirect_resp = _logout_if_ws_unauthenticated()
+        if redirect_resp:
+            return redirect_resp
+        
+        if success:
+            flash('User enabled successfully!', 'success')
+        else:
+            error_msg = result.get('status_string', 'Unknown error')
+            flash(f'Failed to enable user: {error_msg}', 'error')
+        
+        return redirect(url_for('users.profile', user_id=user_id))
+        
+    except Exception as e:
+        flash(f'Error enabling user: {str(e)}', 'error')
         return redirect(url_for('users.profile', user_id=user_id)) 
