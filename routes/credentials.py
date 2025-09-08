@@ -38,9 +38,7 @@ def credentials_rfid_create():
                 'nb_bits': request.form.get('nb_bits', 32),
                 'description': request.form.get('description', ''),
                 'owner': request.form.get('owner'),
-                'validity_enabled': request.form.get('validity_enabled') == 'on',
-                'validity_start': request.form.get('validity_start'),
-                'validity_end': request.form.get('validity_end')
+                'validity_enabled': request.form.get('validity_enabled') == 'on'
             }
             if not all([credential_data['alias'], credential_data['card_id'], credential_data['nb_bits']]):
                 flash('Alias, Card ID, and Number of Bits are required', 'error')
@@ -118,9 +116,7 @@ def credential_edit(credential_id):
                 'alias': request.form.get('alias'),
                 'description': request.form.get('description', ''),
                 'owner': request.form.get('owner'),
-                'validity_enabled': request.form.get('validity_enabled') == 'on',
-                'validity_start': request.form.get('validity_start'),
-                'validity_end': request.form.get('validity_end')
+                'validity_enabled': request.form.get('validity_enabled') == 'on'
             }
             if credential['type'] == 'rfid-card':
                 credential_data.update({
@@ -157,23 +153,44 @@ def credential_edit(credential_id):
         flash(f'Error editing credential: {str(e)}', 'error')
         return redirect(url_for('credentials.credential_view', credential_id=credential_id))
 
-@credentials_bp.route('/credentials/<int:credential_id>/delete', methods=['POST'])
+@credentials_bp.route('/credentials/<int:credential_id>/disable', methods=['POST'])
 @login_required
-def credential_delete(credential_id):
-    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.delete'):
-        flash('You do not have permission to delete credentials.', 'error')
+def credential_disable(credential_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.update'):
+        flash('You do not have permission to disable credentials.', 'error')
         return redirect(url_for('credentials.credentials_list'))
     try:
         auth_state = leosac_client.get_auth_state()
         if not auth_state['connected']:
             flash('WebSocket connection not available. Please try again.', 'error')
             return redirect(url_for('credentials.credentials_list'))
-        success, result = leosac_client.delete_credential(credential_id)
+        success, result = leosac_client.disable_credential(credential_id)
         if success:
-            flash('Credential deleted successfully!', 'success')
+            flash('Credential disabled successfully!', 'success')
         else:
-            error_msg = result.get('status_string', 'Unknown error')
-            flash(f'Failed to delete credential: {error_msg}', 'error')
+            error_msg = result.get('error', result.get('status_string', 'Unknown error')) if isinstance(result, dict) else str(result) if result else 'Unknown error'
+            flash(f'Failed to disable credential: {error_msg}', 'error')
     except Exception as e:
-        flash(f'Error deleting credential: {str(e)}', 'error')
+        flash(f'Error disabling credential: {str(e)}', 'error')
+    return redirect(url_for('credentials.credentials_list'))
+
+@credentials_bp.route('/credentials/<int:credential_id>/enable', methods=['POST'])
+@login_required
+def credential_enable(credential_id):
+    if not has_permission(getattr(current_user, 'rank', 'user'), 'credentials.update'):
+        flash('You do not have permission to enable credentials.', 'error')
+        return redirect(url_for('credentials.credentials_list'))
+    try:
+        auth_state = leosac_client.get_auth_state()
+        if not auth_state['connected']:
+            flash('WebSocket connection not available. Please try again.', 'error')
+            return redirect(url_for('credentials.credentials_list'))
+        success, result = leosac_client.enable_credential(credential_id)
+        if success:
+            flash('Credential enabled successfully!', 'success')
+        else:
+            error_msg = result.get('error', result.get('status_string', 'Unknown error')) if isinstance(result, dict) else str(result) if result else 'Unknown error'
+            flash(f'Failed to enable credential: {error_msg}', 'error')
+    except Exception as e:
+        flash(f'Error enabling credential: {str(e)}', 'error')
     return redirect(url_for('credentials.credentials_list')) 

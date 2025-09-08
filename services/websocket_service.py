@@ -1126,9 +1126,7 @@ class LeosacWebSocketService:
           'description': credential_data.get('description', ''),
           'card-id': credential_data.get('card_id'),  # Use hyphens like server expects
           'nb-bits': int(credential_data.get('nb_bits', 32)),  # Use hyphens like server expects
-          'validity-enabled': credential_data.get('validity_enabled', False),  # Use hyphens like server expects
-          'validity-start': credential_data.get('validity_start'),  # Use hyphens like server expects
-          'validity-end': credential_data.get('validity_end')  # Use hyphens like server expects
+          'validity-enabled': credential_data.get('validity_enabled', False)  # Use hyphens like server expects
         }
       }
       
@@ -1189,11 +1187,6 @@ class LeosacWebSocketService:
         }
       }
       
-      # Add validity dates only if they have values
-      if credential_data.get('validity_start'):
-        rfid_data['attributes']['validity-start'] = credential_data.get('validity_start')
-      if credential_data.get('validity_end'):
-        rfid_data['attributes']['validity-end'] = credential_data.get('validity_end')
       
       # Add owner if specified
       if credential_data.get('owner'):
@@ -1251,6 +1244,42 @@ class LeosacWebSocketService:
       return success, result
     except Exception as e:
       logger.error(f"✗ Error deleting credential {credential_id}: {e}")
+      return False, {'error': str(e)}
+
+  def disable_credential(self, credential_id):
+    """Disable a credential (thread-safe)"""
+    logger.info(f"=== DISABLING CREDENTIAL: {credential_id} ===")
+    try:
+      result = self._run_in_websocket_thread('credential.update', {
+        'credential_id': int(credential_id),
+        'attributes': {
+          'validity-enabled': False
+        }
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Credential disable {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error disabling credential {credential_id}: {e}")
+      return False, {'error': str(e)}
+
+  def enable_credential(self, credential_id):
+    """Enable a credential (thread-safe)"""
+    logger.info(f"=== ENABLING CREDENTIAL: {credential_id} ===")
+    try:
+      result = self._run_in_websocket_thread('credential.update', {
+        'credential_id': int(credential_id),
+        'attributes': {
+          'validity-enabled': True
+        }
+      })
+
+      success = result is not None
+      logger.info(f"{'✓' if success else '✗'} Credential enable {'successful' if success else 'failed'}")
+      return success, result
+    except Exception as e:
+      logger.error(f"✗ Error enabling credential {credential_id}: {e}")
       return False, {'error': str(e)}
 
   def get_schedules(self):
