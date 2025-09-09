@@ -303,6 +303,10 @@ def profile_change_password(user_id):
         new_password2 = request.form.get('new_password2')
         
         # Validate passwords
+        if not current_password:
+            flash('Current password is required', 'error')
+            return redirect(url_for('users.profile', user_id=user_id))
+        
         if not new_password:
             flash('New password is required', 'error')
             return redirect(url_for('users.profile', user_id=user_id))

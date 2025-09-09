@@ -937,7 +937,7 @@ class LeosacWebSocketService:
     """Change user password (thread-safe)"""
     logger.info(f"=== CHANGING PASSWORD FOR USER: {user_id} ===")
     try:
-      result = self._run_in_websocket_thread('user.change_password', {
+      result = self._run_in_websocket_thread('password_change', {
         'user_id': int(user_id),
         'current_password': current_password,
         'new_password': new_password
