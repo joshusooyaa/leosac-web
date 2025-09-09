@@ -130,18 +130,25 @@
                                 </div>
                             </div>
                             
-                            {% if has_permission(current_user.rank, 'users.change_password') and current_user.id == user.id %}
+                            {% if has_permission(current_user.rank, 'users.change_password') and (current_user.id == user.id or current_user.rank == 'administrator') %}
                             <!-- Password Change Section -->
                             <div class="row mt-4">
                               <div class="col-12">
                                 <h5>Change Password</h5>
+                                {% if current_user.rank == 'administrator' and current_user.id != user.id %}
+                                <div class="alert alert-info">
+                                  <i class="fas fa-info-circle"></i> As an administrator, you can change this user's password without knowing their current password.
+                                </div>
+                                {% endif %}
                                 <form method="POST" action="{{ url_for('users.profile_change_password', user_id=user.id) }}" class="row">
+                                  {% if current_user.id == user.id %}
                                   <div class="col-md-4">
                                     <div class="mb-3">
                                       <label for="current_password" class="form-label">Current Password</label>
-                                      <input type="password" class="form-control" id="current_password" name="current_password">
+                                      <input type="password" class="form-control" id="current_password" name="current_password" required>
                                     </div>
                                   </div>
+                                  {% endif %}
                                   <div class="col-md-4">
                                     <div class="mb-3">
                                       <label for="new_password" class="form-label">New Password</label>

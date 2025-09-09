@@ -937,11 +937,17 @@ class LeosacWebSocketService:
     """Change user password (thread-safe)"""
     logger.info(f"=== CHANGING PASSWORD FOR USER: {user_id} ===")
     try:
-      result = self._run_in_websocket_thread('password_change', {
+      # Build request payload
+      payload = {
         'user_id': int(user_id),
-        'current_password': current_password,
         'new_password': new_password
-      })
+      }
+      
+      # Only include current_password if it's provided (not empty)
+      if current_password:
+        payload['current_password'] = current_password
+      
+      result = self._run_in_websocket_thread('password_change', payload)
 
       success = result is not None
       logger.info(f"{'✓' if success else '✗'} Password change {'successful' if success else 'failed'}")

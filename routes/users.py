@@ -302,8 +302,11 @@ def profile_change_password(user_id):
         new_password = request.form.get('new_password')
         new_password2 = request.form.get('new_password2')
         
+        # Check if current user is admin changing another user's password
+        is_admin_changing_other = (current_user.rank == 'administrator' and current_user.id != user_id)
+        
         # Validate passwords
-        if not current_password:
+        if not is_admin_changing_other and not current_password:
             flash('Current password is required', 'error')
             return redirect(url_for('users.profile', user_id=user_id))
         
@@ -314,6 +317,10 @@ def profile_change_password(user_id):
         if new_password != new_password2:
             flash('New passwords do not match', 'error')
             return redirect(url_for('users.profile', user_id=user_id))
+        
+        # For admin changing other user's password, don't send current password
+        if is_admin_changing_other:
+            current_password = None
         
         # Change password via WebSocket
         success, result = leosac_client.change_user_password(user_id, current_password, new_password)
